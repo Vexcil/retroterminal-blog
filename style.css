@@ -1,0 +1,174 @@
+
+body {
+  background: #000;
+  color: #0f0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+a {
+  color: #0f0;
+  text-decoration: none;
+}
+a:hover {
+  color: #0c6;
+}
+
+header, footer {
+  background: #000;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #0f0;
+}
+
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+}
+
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  border-bottom: 1px dashed #0f0;
+}
+.hero .btn {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 2px solid #0f0;
+  color: #0f0;
+  cursor: pointer;
+}
+.hero .btn:hover {
+  background: #0f0;
+  color: #000;
+}
+
+.services {
+  padding: 2rem;
+  border-bottom: 1px dashed #0f0;
+}
+.service-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.card {
+  background: #000;
+  border: 1px solid #0f0;
+  padding: 1rem;
+  width: 200px;
+}
+
+.contact {
+  padding: 2rem;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  max-width: 400px;
+  margin: auto;
+  gap: 1rem;
+}
+input, textarea, button {
+  background: #000;
+  border: 1px solid #0f0;
+  color: #0f0;
+  padding: 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+}
+button {
+  cursor: pointer;
+}
+button:hover {
+  background: #0f0;
+  color: #000;
+}
+select, option {
+  font-family: 'Press Start 2P', monospace;
+  background-color: #000;
+  color: #0f0;
+  border: 2px solid #0f0;
+  padding: 5px;
+  margin-top: 10px;
+  width: 200px;
+  appearance: none;           /* Removes default OS styling */
+  -webkit-appearance: none;   /* Chrome/Safari */
+  -moz-appearance: none;      /* Firefox */
+  text-transform: uppercase;
+  cursor: pointer;
+}
+select:focus {
+  outline: none;
+  border-color: #0f0;
+  box-shadow: 0 0 8px #0f0;
+}
+footer {
+  text-align: center;
+  border-top: 1px solid #0f0;
+  margin-top: 2rem;
+}
+.social-icons a {
+  margin: 0 0.5rem;
+  font-size: 1rem;
+}
+
+/* CRT Effects */
+.crt {
+  position: relative;
+  z-index: 1;
+}
+.crt::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0,0,0,0.25) 50%),
+    linear-gradient(90deg, rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.02));
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+.crt::after {
+  content: "";
+  position: absolute;
+  top:0; left:0; right:0; bottom:0;
+  background: rgba(0,0,0,0.1);
+  opacity: 0;
+  animation: flicker 0.15s infinite;
+  pointer-events: none;
+}
+@keyframes flicker {
+  0%,20%,40%,60%,80%,100% { opacity: 0.1; }
+  10%,30%,50%,70%,90% { opacity: 0.2; }
+}
+.crt-colorsep * {
+  animation: colorsep 1.6s infinite;
+}
+@keyframes colorsep {
+  0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
+  50%     { text-shadow: 0px 0px 3px #0f0; }
+}
+.blink::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #0f0;
+  margin-left: 4px;
+  vertical-align: bottom;
+  animation: cursor-blink 1s steps(2) infinite;
+}
+@keyframes cursor-blink {
+  0%,50% { opacity: 1; }
+  51%,100% { opacity: 0; }
+}

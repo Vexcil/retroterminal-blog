@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RetroTerminal Login</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="module" src="https://unpkg.com/crtfilter-webgl@latest/dist/CRTFilterWebGL.js"></script>
+</head>
+<body>
+  <div id="screen" class="crt crt-colorsep">
+    <section class="hero">
+      <h1>Enter Admin<span class="blink"></span></h1>
+      <input id="username" type="text" placeholder="USERNAME" autocomplete="username">
+      <input id="password" type="password" placeholder="PASSWORD" autocomplete="current-password">
+      <button onclick="login()">LOGIN</button>
+      <p id="msg"></p>
+    </section>
+  </div>
+
+  <script>
+    async function login() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+
+      if (response.ok) {
+        window.location = 'admin.html';
+      } else {
+        document.getElementById('msg').innerText = 'Access Denied';
+      }
+    }
+  </script>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
