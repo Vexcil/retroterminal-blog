@@ -1,0 +1,17 @@
+---
+layout: default
+title: Posts
+---
+
+<section class="services">
+  <h2>All Posts</h2>
+  <ul>
+    {% for p in site.posts %}
+      <li>
+        <a href="{{ p.url | relative_url }}">{{ p.title }}</a>
+        <span style="font-size:smaller;">({{ p.date | date: "%Y-%m-%d" }})</span>
+      </li>
+    {% endfor %}
+  </ul>
+</section>
+
