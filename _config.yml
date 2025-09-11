@@ -1,0 +1,20 @@
+title: RetroTerminal
+description: CRT-styled blog
+url: https://retroterminal.net
+
+permalink: pretty     # /page/ instead of /page.html
+markdown: kramdown
+
+collections:
+  recipes:
+    output: true      # build pages for each recipe
+  posts:
+    output: true
+
+
+defaults:
+  - scope:
+      path: ""
+      type: "posts"
+    values:
+      permalink: /posts/:title/
