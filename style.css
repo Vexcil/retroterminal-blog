@@ -1,5 +1,12 @@
+html,
 body {
-  background: #000;
+  margin: 0;
+  padding: 0;
+  background: #000; /* solid black everywhere */
+}
+
+/* Base body styling */
+body {
   color: #0f0;
   font-family: 'Press Start 2P', monospace;
   font-size: 12px;
@@ -7,6 +14,18 @@ body {
   overflow-x: hidden;
 }
 
+/* Screen wrapper so background and footer run full height */
+#screen {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Main content grows to push footer down */
+.main-content {
+  padding: 2rem;
+}
+
+/* Links */
 a {
   color: #0f0;
   text-decoration: none;
@@ -15,23 +34,60 @@ a:hover {
   color: #0c6;
 }
 
-header, footer {
+/* Header and footer */
+header {
   background: #000;
   padding: 1rem 2rem;
   border-bottom: 1px solid #0f0;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-sizing: border-box;
 }
 
+header h1 {
+  margin: 0;
+}
+
+/* Navigation */
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* Generic nav button style (for Excalibur) */
+.nav-links .btn {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #0f0;
+}
+
+/* Footer */
+footer {
+  background: #000;
+  padding: 1rem 2rem;
+  border-top: 1px solid #0f0;
+  margin-top: 2rem;
+  text-align: center;
+}
+.social-icons a {
+  margin: 0 0.5rem;
+  font-size: 1rem;
+}
+
+/* Old navbar class if you ever use it */
 .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
-.nav-links {
-  list-style: none;
-  display: flex;
-  gap: 1rem;
-}
 
+/* Hero and sections (for home page) */
 .hero {
   text-align: center;
   padding: 4rem 2rem;
@@ -79,7 +135,9 @@ form {
   margin: auto;
   gap: 1rem;
 }
-input, textarea, button {
+input,
+textarea,
+button {
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
@@ -93,7 +151,8 @@ button:hover {
   background: #0f0;
   color: #000;
 }
-select, option {
+select,
+option {
   font-family: 'Press Start 2P', monospace;
   background-color: #000;
   color: #0f0;
@@ -112,23 +171,15 @@ select:focus {
   border-color: #0f0;
   box-shadow: 0 0 8px #0f0;
 }
-footer {
-  text-align: center;
-  border-top: 1px solid #0f0;
-  margin-top: 2rem;
-}
-.social-icons a {
-  margin: 0 0.5rem;
-  font-size: 1rem;
-}
 
 /* CRT Effects */
 .crt {
   position: relative;
   z-index: 1;
+  overflow: hidden; /* prevents animated overlays from affecting scroll width/height */
 }
 
-/* Static scanlines + very subtle vertical tint */
+/* Static scanlines + subtle vertical tint */
 .crt::before {
   content: "";
   position: absolute;
@@ -142,47 +193,53 @@ footer {
   pointer-events: none;
 }
 
-/* Moving scanline bar + flicker overlay */
+/* Moving green glowline: 1px bright, ~20px tail, sweeping down */
 .crt::after {
   content: "";
   position: absolute;
-  top:0; left:0; right:0; bottom:0;
-  background:
-    linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0) 0%,
-      rgba(0, 255, 0, 0.0) 40%,
-      rgba(255, 255, 255, 0.35) 50%,
-      rgba(0, 255, 0, 0.0) 60%,
-      rgba(0, 0, 0, 0) 100%
-    );
-  mix-blend-mode: screen;
-  opacity: 0;
+  inset: 0;
   pointer-events: none;
-  /* long sweep + fast flicker layered together */
-  animation: scanline-sweep 6.4s linear infinite, flicker 0.15s infinite;
+  mix-blend-mode: screen;
+
+  /* 1px bright line + 20px trailing glow in #0f0 */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(0, 255, 0, 0) 0px,
+    rgba(0, 255, 0, 0) 1px,
+    rgba(0, 255, 0, 0.95) 2px,   /* main 1px beam */
+    rgba(0, 255, 0, 0.4) 12px,   /* mid glow */
+    rgba(0, 255, 0, 0.0) 21px    /* fade-out */
+  );
+
+  background-size: 100% 21px;   /* 1px line + 20px tail */
+  background-repeat: no-repeat;
+
+  opacity: 0.75;
+  animation:
+    glowline-sweep 6.4s linear infinite,
+    flicker 0.15s infinite;
 }
 
-/* Existing flicker reused on the moving bar */
+/* Small, fast flicker for the glowline intensity */
 @keyframes flicker {
-  0%,20%,40%,60%,80%,100% { opacity: 0.1; }
-  10%,30%,50%,70%,90% { opacity: 0.2; }
+  0%,20%,40%,60%,80%,100% { opacity: 0.65; }
+  10%,30%,50%,70%,90%    { opacity: 0.9; }
 }
 
-/* Vertical sweep of a bright scanline, roughly synced with colorsep (1.6s * 4) */
-@keyframes scanline-sweep {
+/* Vertical sweep using background-position, no layout changes */
+@keyframes glowline-sweep {
   0% {
-    transform: translateY(-100%);
+    background-position: 0 -21px;   /* start just above the top */
   }
-  45% {
-    transform: translateY(0%);
+  50% {
+    background-position: 0 50%;     /* mid screen */
   }
   100% {
-    transform: translateY(100%);
+    background-position: 0 100%;    /* past the bottom edge */
   }
 }
 
-/* Color separation stays as you had it */
+/* Color separation on text/content */
 .crt-colorsep * {
   animation: colorsep 1.6s infinite;
 }
@@ -274,6 +331,32 @@ footer {
 /* Optional 3-wide rows */
 .image-row.image-row-3 img {
   max-width: 32%;
+}
+
+/* Responsive tweaks - collapse header on mobile, avoid horizontal scroll */
+@media (max-width: 720px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;          /* allow items to wrap instead of pushing width */
+    gap: 0.5rem;
+  }
+
+  .nav-links a {
+    font-size: 0.8rem;
+  }
+
+  .nav-links .btn {
+    padding: 0.25rem 0.5rem;
+  }
 }
 
 /* Stack image rows on small screens */
