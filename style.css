@@ -172,3 +172,57 @@ footer {
   0%,50% { opacity: 1; }
   51%,100% { opacity: 0; }
 }
+/* Main content area */
+.main-content {
+  padding: 2rem;
+}
+
+/* Generic post wrapper */
+.post {
+  max-width: 800px;
+  margin: 0 auto 3rem auto;
+}
+
+/* Page and post title */
+.post-title {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Paragraph spacing and readability */
+.post p {
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+/* Lists */
+.post ul,
+.post ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.post li {
+  line-height: 1.5;
+}
+
+/* Headings inside posts */
+.post h2 {
+  font-size: 1.3rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.post h3 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Images inside posts */
+.post img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 1.5rem auto;
+}

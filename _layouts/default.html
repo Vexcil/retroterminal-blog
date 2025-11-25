@@ -4,14 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{{ page.title }} - {{ site.title }}</title>
+
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ "/style.css" | relative_url }}">
+
+  <link rel="icon" href="{{ "/assets/RetroTerminalFavicon.ico" | relative_url }}" type="image/x-icon">
 </head>
+
 <body>
   <div id="screen" class="crt crt-colorsep">
     {% include header.html %}
-    <main>
-      {{ content }}
+    <main class="main-content">
+      <article class="post">
+        <h1 class="post-title">{{ page.title }}</h1>
+        {{ content }}
+      </article>
     </main>
     {% include footer.html %}
   </div>
