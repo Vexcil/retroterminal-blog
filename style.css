@@ -60,7 +60,7 @@ header h1 {
   padding: 0;
 }
 
-/* Generic nav button style (for Excalibur) */
+/* Generic nav button style */
 .nav-links .btn {
   display: inline-block;
   padding: 0.25rem 0.75rem;
@@ -80,17 +80,11 @@ footer {
   font-size: 1rem;
 }
 
-/* Old navbar class if you ever use it */
-.navbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* Hero and sections (for home page) */
+/* Hero sections on home */
 .hero {
   text-align: center;
   padding: 4rem 2rem;
+  padding-top: 1rem;
   border-bottom: 1px dashed #0f0;
 }
 .hero .btn {
@@ -107,6 +101,7 @@ footer {
   color: #000;
 }
 
+/* Services */
 .services {
   padding: 2rem;
   border-bottom: 1px dashed #0f0;
@@ -125,6 +120,7 @@ footer {
   width: 200px;
 }
 
+/* Contact form */
 .contact {
   padding: 2rem;
 }
@@ -161,10 +157,6 @@ option {
   margin-top: 10px;
   width: 200px;
   appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  text-transform: uppercase;
-  cursor: pointer;
 }
 select:focus {
   outline: none;
@@ -172,28 +164,31 @@ select:focus {
   box-shadow: 0 0 8px #0f0;
 }
 
-/* CRT Effects */
+/* CRT container */
 .crt {
   position: relative;
   z-index: 1;
-  overflow: hidden; /* keep internal overlays from affecting scroll */
+  overflow: hidden;
 }
 
-/* Static scanlines + subtle vertical tint on content area */
+/* INVERTED STATIC SCANLINES (new version) */
 .crt::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
+
   background:
-    /* horizontal scanlines */
-    linear-gradient(rgba(0, 0, 0, 0) 50%, rgba(0,0,0,0.25) 50%),
-    /* slight vertical green tint */
-    linear-gradient(90deg, rgba(0, 255, 0, 0.02), rgba(0, 255, 0, 0.02));
+    /* inverted scanline: dark first, clear second */
+    linear-gradient(rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 50%),
+
+    /* soft vertical tint */
+    linear-gradient(90deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02));
+
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
 }
 
-/* Viewport fixed green glowline, thicker and dimmer */
+/* VIEWPORT-FIXED GLOWLINE (thicker, dimmer, slower) */
 body::after {
   content: "";
   position: fixed;
@@ -202,42 +197,37 @@ body::after {
   mix-blend-mode: screen;
   z-index: 2;
 
-  /* about 2–3x thicker than before, with soft tail, all #0f0 */
   background-image: linear-gradient(
     to bottom,
-    rgba(0, 255, 0, 0.0) 0px,
-    rgba(0, 255, 0, 0.0) 6px,
-    rgba(0, 255, 0, 0.25) 8px,   /* main beam region, dimmed */
-    rgba(0, 255, 0, 0.12) 30px,  /* mid glow */
-    rgba(0, 255, 0, 0.04) 44px,  /* far tail */
-    rgba(0, 255, 0, 0.0) 48px    /* fade out */
+    rgba(0,255,0,0.0) 0px,
+    rgba(0,255,0,0.0) 6px,
+    rgba(0,255,0,0.25) 8px,    /* main beam area, dim */
+    rgba(0,255,0,0.12) 30px,   /* glow */
+    rgba(0,255,0,0.04) 44px,   /* tail */
+    rgba(0,255,0,0.0) 48px     /* fade */
   );
 
-  background-size: 100% 48px;   /* thicker line + long tail */
+  background-size: 100% 48px;
   background-repeat: no-repeat;
 
   animation:
-    glowline-sweep 12.8s linear infinite,   /* slower crawl */
-    glowline-flicker 0.18s infinite;        /* subtle intensity flicker */
+    glowline-sweep 12.8s linear infinite,
+    glowline-flicker 0.18s infinite;
 }
 
-/* Vertical sweep tied to viewport height, not page height */
+/* Slow viewport sweep */
 @keyframes glowline-sweep {
-  0% {
-    background-position: 0 -48px;   /* start just above the top of the viewport */
-  }
-  100% {
-    background-position: 0 100%;    /* finish below the bottom of the viewport */
-  }
+  0%   { background-position: 0 -48px; }
+  100% { background-position: 0 100%; }
 }
 
-/* Dim, subtle flicker only for the glowline */
+/* Dim flicker */
 @keyframes glowline-flicker {
-  0%, 100% { opacity: 0.22; }
-  50%      { opacity: 0.30; }
+  0%,100% { opacity: 0.22; }
+  50%     { opacity: 0.30; }
 }
 
-/* Color separation on text/content */
+/* Color separation */
 .crt-colorsep * {
   animation: colorsep 1.6s infinite;
 }
@@ -246,7 +236,7 @@ body::after {
   50%     { text-shadow: 0px 0px 3px #0f0; }
 }
 
-/* Blinking cursor helper */
+/* Cursor blink */
 .blink::after {
   content: "";
   display: inline-block;
@@ -262,48 +252,36 @@ body::after {
   51%,100% { opacity: 0; }
 }
 
-/* Generic post wrapper */
+/* Blog posts */
 .post {
   margin: 0 auto 3rem auto;
 }
-
-/* Page and post title */
 .post-title {
   font-size: 1.8rem;
   margin-bottom: 1.5rem;
 }
-
-/* Paragraph spacing and readability */
 .post p {
   line-height: 1.6;
   margin-bottom: 1rem;
 }
-
-/* Lists */
 .post ul,
 .post ol {
   margin-left: 1.5rem;
   margin-bottom: 1rem;
 }
-
 .post li {
   line-height: 1.5;
 }
-
-/* Headings inside posts */
 .post h2 {
   font-size: 1.3rem;
   margin-top: 2rem;
   margin-bottom: 0.75rem;
 }
-
 .post h3 {
   font-size: 1.1rem;
   margin-top: 1.5rem;
   margin-bottom: 0.5rem;
 }
-
-/* Images inside posts */
 .post img {
   max-width: 50%;
   height: auto;
@@ -311,27 +289,24 @@ body::after {
   margin: 1.5rem auto;
 }
 
-/* Side by side image rows */
+/* Side-by-side images */
 .image-row {
   display: flex;
   gap: 1rem;
   justify-content: center;
   margin: 1.5rem 0;
 }
-
 .image-row img {
   max-width: 48%;
   height: auto;
-  margin: 0;
   display: block;
+  margin: 0;
 }
-
-/* Optional 3 wide rows */
 .image-row.image-row-3 img {
   max-width: 32%;
 }
 
-/* Responsive tweaks - collapse header on mobile, avoid horizontal scroll */
+/* MOBILE HEADER FIX: avoid horizontal scroll */
 @media (max-width: 720px) {
   header {
     flex-direction: column;
@@ -344,7 +319,7 @@ body::after {
   }
 
   .nav-links {
-    flex-wrap: wrap;          /* allow items to wrap instead of pushing width */
+    flex-wrap: wrap;
     gap: 0.5rem;
   }
 
@@ -357,7 +332,7 @@ body::after {
   }
 }
 
-/* Stack image rows on small screens */
+/* Mobile image rows */
 @media (max-width: 600px) {
   .image-row {
     flex-direction: column;
