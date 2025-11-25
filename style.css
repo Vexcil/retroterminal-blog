@@ -172,14 +172,9 @@ footer {
   0%,50% { opacity: 1; }
   51%,100% { opacity: 0; }
 }
-/* Main content area */
-.main-content {
-  padding: 2rem;
-}
 
 /* Generic post wrapper */
 .post {
-  max-width: 800px;
   margin: 0 auto 3rem auto;
 }
 
@@ -221,7 +216,7 @@ footer {
 
 /* Images inside posts */
 .post img {
-  max-width: 100%;
+  max-width: 50%;
   height: auto;
   display: block;
   margin: 1.5rem auto;
