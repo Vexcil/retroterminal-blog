@@ -6,7 +6,7 @@ permalink: /plant-control/
 
 <section class="hero">
   <h2>Plant Pump Control</h2>
-  <p>Internal controller for the watering relay on node <code>water</code>.</p>
+  <p>Internal controller for the watering relay on node <code style="color:#4ecaff;font-size: 20px;vertical-align: 1px;">water</code>.</p>
 </section>
 
 <section class="services">
