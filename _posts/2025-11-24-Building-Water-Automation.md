@@ -20,8 +20,10 @@ To move water between the totes, the top one has a self-sealing rain-barrel spig
 
 The pump sits inside this lower tote. Power to the pump goes through an IoT relay box which I control through a secure portal on any web browser. I won’t cover the connection paths publicly for obvious reasons. The important part is that the pump can be turned on or off from my phone anywhere in the world.
 
-![IoT Relay Box]({{ "/assets/posts/blog-water-automation/iot-relay.jpg" | relative_url }})
-![Raspberry Pi Zero 2W]({{ "/assets/posts/blog-water-automation/pi-water-closeup.jpg" | relative_url }})
+<div class="image-row">
+  <img src="{{ '/assets/posts/blog-water-automation/iot-relay.jpg' | relative_url }}" alt="IoT Relay Box">
+  <img src="{{ '/assets/posts/blog-water-automation/pi-water-closeup.jpg' | relative_url }}" alt="Raspberry Pi Zero 2W">
+</div>
 
 ## Irrigation Line Layout
 
@@ -38,9 +40,9 @@ Inside the tent, the 1/2 inch line terminates into three **1/2 inch to 1/4 inch 
 
 Each 1/4 inch line then goes through:
 
-• A **1/4 inch check valve**
-• A transition to **1/8 inch clear tubing**
-• A **halo ring** at the end
+• A **1/4 inch check valve**  
+• A transition to **1/8 inch clear tubing**  
+• A **halo ring** at the end  
 
 The clear 1/8 inch line makes it easy to see clogs or sediment buildup.
 
@@ -56,9 +58,9 @@ One of the hardest parts of this build was dealing with mismatched tubing tolera
 
 The reliable fix was heat and lubrication:
 
-• Warm the tubing with a hot-air gun
-• Add a small amount of soap
-• Press it over the barb
+• Warm the tubing with a hot-air gun  
+• Add a small amount of soap  
+• Press it over the barb  
 
 Once it cools, the fit is rock-solid. Nearly impossible to remove without cutting.
 
@@ -80,11 +82,11 @@ This keeps the system modular and avoids redoing all the small 1/8 inch lines.
 
 After this upcoming grow cycle, I’m adding sensors:
 
-• **Soil moisture sensors** for real-time plant feedback
-• **Water pH and EC sensors** inside the bottom tote
-• **A low-water safety cutoff** to protect the pump
-• **Automated pH dosers** that adjust pH based on the sensor readings
-• Historical logs and dashboards for tracking each run
+• **Soil moisture sensors** for real-time plant feedback  
+• **Water pH and EC sensors** inside the bottom tote  
+• **A low-water safety cutoff** to protect the pump  
+• **Automated pH dosers** that adjust pH based on the sensor readings  
+• Historical logs and dashboards for tracking each run  
 
 Once those pieces are integrated, the system will be almost entirely autonomous.
 
@@ -92,5 +94,7 @@ Once those pieces are integrated, the system will be almost entirely autonomous.
 
 This project has already made my grow more consistent and far easier to manage. Water conditioning, nutrient mixing, and delivery are now controlled, repeatable and remotely adjustable. With the next set of upgrades, the entire tent will move closer to true hands-off operation.
 
-![Complete Wire Shelving Unit]({{ "/assets/posts/blog-water-automation/wire-rack-complete.jpg" | relative_url }})
-![Complete tent - for now]({{ "/assets/posts/blog-water-automation/finished-tent.jpg" | relative_url }})
+<div class="image-row">
+  <img src="{{ '/assets/posts/blog-water-automation/wire-rack-complete.jpg' | relative_url }}" alt="Complete Wire Shelving Unit">
+  <img src="{{ '/assets/posts/blog-water-automation/finished-tent.jpg' | relative_url }}" alt="Complete tent - for now">
+</div>
