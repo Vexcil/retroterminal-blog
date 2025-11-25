@@ -176,10 +176,10 @@ select:focus {
 .crt {
   position: relative;
   z-index: 1;
-  overflow: hidden; /* prevents animated overlays from affecting scroll width/height */
+  overflow: hidden; /* keep internal overlays from affecting scroll */
 }
 
-/* Static scanlines + subtle vertical tint */
+/* Static scanlines + subtle vertical tint on content area */
 .crt::before {
   content: "";
   position: absolute;
@@ -193,50 +193,48 @@ select:focus {
   pointer-events: none;
 }
 
-/* Moving green glowline: 1px bright, ~20px tail, sweeping down */
-.crt::after {
+/* Viewport fixed green glowline, thicker and dimmer */
+body::after {
   content: "";
-  position: absolute;
+  position: fixed;
   inset: 0;
   pointer-events: none;
   mix-blend-mode: screen;
+  z-index: 2;
 
-  /* 1px bright line + 20px trailing glow in #0f0 */
+  /* about 2–3x thicker than before, with soft tail, all #0f0 */
   background-image: linear-gradient(
     to bottom,
-    rgba(0, 255, 0, 0) 0px,
-    rgba(0, 255, 0, 0) 1px,
-    rgba(0, 255, 0, 0.95) 2px,   /* main 1px beam */
-    rgba(0, 255, 0, 0.4) 12px,   /* mid glow */
-    rgba(0, 255, 0, 0.0) 21px    /* fade-out */
+    rgba(0, 255, 0, 0.0) 0px,
+    rgba(0, 255, 0, 0.0) 6px,
+    rgba(0, 255, 0, 0.25) 8px,   /* main beam region, dimmed */
+    rgba(0, 255, 0, 0.12) 30px,  /* mid glow */
+    rgba(0, 255, 0, 0.04) 44px,  /* far tail */
+    rgba(0, 255, 0, 0.0) 48px    /* fade out */
   );
 
-  background-size: 100% 21px;   /* 1px line + 20px tail */
+  background-size: 100% 48px;   /* thicker line + long tail */
   background-repeat: no-repeat;
 
-  opacity: 0.75;
   animation:
-    glowline-sweep 6.4s linear infinite,
-    flicker 0.15s infinite;
+    glowline-sweep 12.8s linear infinite,   /* slower crawl */
+    glowline-flicker 0.18s infinite;        /* subtle intensity flicker */
 }
 
-/* Small, fast flicker for the glowline intensity */
-@keyframes flicker {
-  0%,20%,40%,60%,80%,100% { opacity: 0.65; }
-  10%,30%,50%,70%,90%    { opacity: 0.9; }
-}
-
-/* Vertical sweep using background-position, no layout changes */
+/* Vertical sweep tied to viewport height, not page height */
 @keyframes glowline-sweep {
   0% {
-    background-position: 0 -21px;   /* start just above the top */
-  }
-  50% {
-    background-position: 0 50%;     /* mid screen */
+    background-position: 0 -48px;   /* start just above the top of the viewport */
   }
   100% {
-    background-position: 0 100%;    /* past the bottom edge */
+    background-position: 0 100%;    /* finish below the bottom of the viewport */
   }
+}
+
+/* Dim, subtle flicker only for the glowline */
+@keyframes glowline-flicker {
+  0%, 100% { opacity: 0.22; }
+  50%      { opacity: 0.30; }
 }
 
 /* Color separation on text/content */
@@ -313,7 +311,7 @@ select:focus {
   margin: 1.5rem auto;
 }
 
-/* Side-by-side image rows */
+/* Side by side image rows */
 .image-row {
   display: flex;
   gap: 1rem;
@@ -328,7 +326,7 @@ select:focus {
   display: block;
 }
 
-/* Optional 3-wide rows */
+/* Optional 3 wide rows */
 .image-row.image-row-3 img {
   max-width: 32%;
 }
