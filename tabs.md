@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Guitar Tabs
-permalink: /guitarsheets-94b7f/
+permalink: /tabs/
 noindex: true
 ---
 
