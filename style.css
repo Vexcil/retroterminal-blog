@@ -488,33 +488,19 @@ body::after {
   }
 }
 /* ============================================
-   AlphaTab text readability (green + still animated)
+   AlphaTab text readability (green only for text)
    ============================================ */
 
-/* Force all alphaTab text elements to render in your site's green */
+/* All text elements: note numbers, symbols, tempo, etc. */
 .at-main text {
   fill: #0f0 !important;           /* solid green text */
-  stroke: #0f0 !important;         /* green outline to keep letters sharp */
-  stroke-width: 0.6px !important;  /* enough to anchor the shape */
-  paint-order: stroke fill;        /* draw outline first, then fill */
-}
-
-/* Musical symbols that are text-like (tempo, markers, directions) */
-.at-main .at-lyrics text,
-.at-main .at-directions text {
-  fill: #0f0 !important;
-  stroke: #0f0 !important;
+  stroke: #0f0 !important;         /* thin outline to keep letters sharp */
   stroke-width: 0.6px !important;
+  paint-order: stroke fill;
 }
 
-/* Prevent green fill from bleeding into shapes that shouldn’t be text */
-.at-main path,
-.at-main line,
-.at-main polyline,
-.at-main polygon,
-.at-main circle,
-.at-main rect {
-  fill: none !important;
-  stroke: currentColor !important;
-  color: #0f0 !important;
+/* Optional: a subtle glow that matches the site */
+.at-main text {
+  text-shadow: 0 0 4px rgba(0,255,0,0.45);
 }
+
