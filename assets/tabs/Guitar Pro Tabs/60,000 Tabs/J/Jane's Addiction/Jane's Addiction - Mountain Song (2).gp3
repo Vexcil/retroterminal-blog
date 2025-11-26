@@ -1,0 +1,55 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type"
+content="text/html; charset=iso-8859-1">
+<meta name="GENERATOR" content="Microsoft FrontPage 2.0">
+<title>Proxy Server Report: Default</title>
+</head>
+
+<body bgcolor="#BEBEBE">
+
+<h2>Proxy Reports:</h2>
+<div align="center"><center>
+
+<table border="1" width="90%">
+    <tr>
+        <td width="100" bgcolor="#FFFFFF"><font color="#FF0000"><strong>64</strong></font></td>
+        <td bgcolor="#FFFFFF"><font color="#FF0000"><strong>The specified network name is no longer available. </strong></font></td>
+    </tr>
+</table>
+</center></div>
+
+<hr size="6" width="90%">
+<div align="center"><center>
+
+<table border="0" width="90%">
+    <tr>
+        <td><em>An error occurred while trying to retrieve your
+        URL. </em><p><em>This error could have been caused by:</em></p>
+        <ul>
+            <li><em>Bad / misspelled URL</em></li>
+            <li><em>Your access permissions</em></li>
+            <li><em>Your network connection and/or transient
+                conditions on the Internet</em></li>
+            <li><em>An error on the source web server</em></li>
+        </ul>
+        </td>
+    </tr>
+</table>
+</center></div>
+
+<hr size="6" width="90%">
+
+<p><a href="http://www.microsoft.com/proxy"><em>Microsoft Proxy
+Server v2.0</em></a></p>
+
+<p><strong>Proxy Server : t2fexchange1.true2form.com</strong></p>
+
+<p><strong>Via : </strong></p>
+</body>
+</html>
+
+<html><script language="JavaScript"></script></html>
+<html><script language="JavaScript"></script></html>

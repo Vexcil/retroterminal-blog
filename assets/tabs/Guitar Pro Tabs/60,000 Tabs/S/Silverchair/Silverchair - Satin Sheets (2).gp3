@@ -1,0 +1,47 @@
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<meta name="GENERATOR" content="Microsoft FrontPage 3.0">
+<title>10060 -- Tiempo de espera para conectar agotado</title>
+</head>
+
+<body bgcolor="#BEBEBE">
+
+<h2>Informes proxy:</h2>
+<div align="center"><center>
+
+<table border="1" width="90%">
+  <tr>
+    <td width="100" bgcolor="#FFFFFF"><font color="#FF0000"><strong>10060</strong></font></td>
+    <td bgcolor="#FFFFFF"><font color="#FF0000"><strong>Tiempo de espera para conectar agotado</strong></font></td>
+  </tr>
+</table>
+</center></div>
+
+<hr size="6" width="90%">
+<div align="center"><center>
+
+<table border="0" width="90%">
+  <tr>
+    <td><em>No se pudo conectar con el servidor Web especificado en la direcci&oacute;n URL. Compruebe la direcci&oacute;n URL o intente de nuevo la petici&oacute;n.</em><p><em>Posible causa del error:</em><ul>
+      <li><em>Direcci&oacute;n URL no v&aacute;lida o con error ortogr&aacute;fico</em></li>
+      <li><em>V&iacute;nculo no v&aacute;lido</em></li>
+      <li><em>La conexi&oacute;n de red y/o condiciones transitorias en Internet</em></li>
+      <li><em>Cargar condiciones en el servidor Web.</em></li>
+    </ul>
+    </td>
+  </tr>
+</table>
+</center></div>
+
+<hr size="6" width="90%">
+
+<p><a href="http://www.microsoft.com/proxy"><em>Microsoft Proxy Server versi&oacute;n 2.0</em></a></p>
+
+<p><strong>Servidor proxy : servidor.alestra.net.mx</strong></p>
+
+<p><strong>V&iacute;a : </strong></p>
+</body>
+</html>

@@ -1,0 +1,85 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML dir=ltr><HEAD><TITLE>La página no se puede mostrar</TITLE>
+<STYLE>A:link {
+	FONT: 8pt/11pt verdana; COLOR: #ff0000
+}
+A:visited {
+	FONT: 8pt/11pt verdana; COLOR: #4e4e4e
+}
+</STYLE>
+
+<META content=NOINDEX name=ROBOTS>
+<META http-equiv=Content-Type content="text-html; charset=Windows-1252">
+<SCRIPT> 
+function Homepage(){
+<!--
+// in real bits, urls get returned to our script like this:
+// res://shdocvw.dll/http_404.htm#http://www.DocURL.com/bar.htm 
+
+	//For testing use DocURL = "res://shdocvw.dll/http_404.htm#https://www.microsoft.com/bar.htm"
+	DocURL=document.URL;
+	
+	//this is where the http or https will be, as found by searching for :// but skipping the res://
+	protocolIndex=DocURL.indexOf("://",4);
+	
+	//this finds the ending slash for the domain server 
+	serverIndex=DocURL.indexOf("/",protocolIndex + 3);
+
+	//for the href, we need a valid URL to the domain. We search for the # symbol to find the begining 
+	//of the true URL, and add 1 to skip it - this is the BeginURL value. We use serverIndex as the end marker.
+	//urlresult=DocURL.substring(protocolIndex - 4,serverIndex);
+	BeginURL=DocURL.indexOf("#",1) + 1;
+	urlresult=DocURL.substring(BeginURL,serverIndex);
+		
+	//for display, we need to skip after http://, and go to the next slash
+	displayresult=DocURL.substring(protocolIndex + 3 ,serverIndex);
+	document.write('<A HREF="' + urlresult + '">' + displayresult + "</a>");
+}
+//-->
+</SCRIPT>
+
+<META content="MSHTML 5.50.4522.1800" name=GENERATOR></HEAD>
+<BODY bgColor=#ffffff>
+<TABLE cellSpacing=5 cellPadding=3 width=410>
+  <TBODY>
+  <TR>
+    <TD vAlign=center align=left width=360>
+      <H1 style="FONT: 13pt/15pt verdana; COLOR: #000000"><!--Problem-->La página
+      no se puede mostrar</H1></TD></TR>
+  <TR>
+    <TD width=400 colSpan=2><FONT 
+      style="FONT: 8pt/11pt verdana; COLOR: #000000">Existe un problema con la  
+      página a la que intenta obtener acceso y no se puede mostrar.</FONT></TD></TR>
+  <TR>
+    <TD width=400 colSpan=2><FONT 
+      style="FONT: 8pt/11pt verdana; COLOR: #000000">
+      <HR color=#c0c0c0 noShade>
+
+      <P>Intente lo siguiente:</P>
+      <UL>
+        <LI>Haga clic en el botón <A href="javascript:location.reload()">Actualizar</A>, 
+        o vuelva a intentarlo más adelante.<BR>
+        <LI>Abra la
+        <SCRIPT>
+	  <!--
+	  if (!((window.navigator.userAgent.indexOf("MSIE") > 0) && (window.navigator.appVersion.charAt(0) == "2")))
+	  {
+	   Homepage();
+	  }
+	  //-->
+	  </SCRIPT>
+         página principal y busque los vínculos correspondientes a la información que necesita.</LI>
+        <LI>Si cree que debería poder ver este directorio o esta página, 
+        póngase en contacto con el administrador del sitio Web utilizando la dirección de correo electrónico o 
+        el número de teléfono que aparecen en la página principal
+        <SCRIPT> Homepage();</SCRIPT>
+. </LI></UL>
+      <H2 style="FONT: 8pt/11pt verdana; COLOR: #000000">10060 - Tiempo de espera de la conexión<BR>Internet Security and Acceleration Server</H2>
+      <HR color=#c0c0c0 noShade>
+
+      <P>Información técnica (para el personal de soporte técnico)</P>
+      <UL>
+        <LI>Fondo:<BR>la puerta de enlace no pudo recibir una respuesta a tiempo del sitio Web al que intenta obtener acceso. Esto podría indicar que la red está sobrecargada  o que el sitio Web tiene dificultades técnicas.<P></P></LI>
+        <LI>ISA Server: dnskplr.kepler.cc<BR>
+        Vía: <BR>URL: http://www.mysongbook.com/files/-/-2138/France%20-%20Elle%20descend%20de%20la%20montagne.gp3<BR>Hora: 14/07/2003 05:10:25 p.m. GMT
+        </LI></UL></FONT></TD></TR></TBODY></TABLE></BODY></HTML>
