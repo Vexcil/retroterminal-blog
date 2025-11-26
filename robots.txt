@@ -1,2 +1,2 @@
 User-agent: *
-Disallow: /guitarsheets-94b7f/
+Disallow: /tabs/
