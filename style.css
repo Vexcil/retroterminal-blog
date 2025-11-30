@@ -506,3 +506,31 @@ body::after {
   paint-order: stroke fill;
   text-shadow: 0 0 4px rgba(0,255,0,0.45);
 }
+/* ============================================
+   AlphaTab playback cursors (CRT-style, non-blocking)
+   ============================================ */
+
+/* Bar cursor: soft green glow band over the current bar */
+.at-cursor-bar {
+  background: linear-gradient(
+    to right,
+    rgba(0, 255, 0, 0.00) 0%,
+    rgba(0, 255, 0, 0.22) 50%,
+    rgba(0, 255, 0, 0.00) 100%
+  );
+  pointer-events: none;
+}
+
+/* Beat cursor: thin bright line with CRT glow */
+.at-cursor-beat {
+  background: rgba(0, 255, 0, 0.85);
+  width: 2px;
+  box-shadow: 0 0 6px rgba(0, 255, 0, 0.9);
+  pointer-events: none;
+}
+
+/* Currently played symbols: slightly brighter green, no fill block */
+.at-highlight * {
+  fill: #bfff9f;
+  stroke: #bfff9f;
+}

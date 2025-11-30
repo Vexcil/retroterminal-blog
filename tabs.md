@@ -65,23 +65,23 @@ noindex: true
   let filteredTabs = [];
   let currentPage = 1;
 
-  const searchInput = document.getElementById('tab-search');
-  const sortSelect = document.getElementById('tab-sort');
-  const listEl = document.getElementById('tab-list');
-  const pageInfoEl = document.getElementById('tab-page-info');
-  const prevBtn = document.getElementById('tab-prev');
-  const nextBtn = document.getElementById('tab-next');
-  const currentTitleEl = document.getElementById('current-tab-title');
-  const viewerContainer = document.getElementById('alphaTab');
-  const trackSelect = document.getElementById('track-select');
-  const playBtn = document.getElementById('tab-play');
-  const stopBtn = document.getElementById('tab-stop');
-  const layoutSelect = document.getElementById('layout-select');
+  const searchInput      = document.getElementById('tab-search');
+  const sortSelect       = document.getElementById('tab-sort');
+  const listEl           = document.getElementById('tab-list');
+  const pageInfoEl       = document.getElementById('tab-page-info');
+  const prevBtn          = document.getElementById('tab-prev');
+  const nextBtn          = document.getElementById('tab-next');
+  const currentTitleEl   = document.getElementById('current-tab-title');
+  const viewerContainer  = document.getElementById('alphaTab');
+  const trackSelect      = document.getElementById('track-select');
+  const playBtn          = document.getElementById('tab-play');
+  const stopBtn          = document.getElementById('tab-stop');
+  const layoutSelect     = document.getElementById('layout-select');
 
-  let alphaApi = null;
-  let currentScore = null;
-  let currentLayout = 'horizontal'; // 'horizontal' or 'page'
-  let currentTabItem = null;        // remember which file is loaded
+  let alphaApi       = null;
+  let currentScore   = null;
+  let currentLayout  = 'horizontal'; // 'horizontal' or 'page'
+  let currentTabItem = null;
 
   function loadIndex() {
     fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
@@ -109,7 +109,7 @@ noindex: true
       const ta = a.title.toLowerCase();
       const tb = b.title.toLowerCase();
       if (ta < tb) return sortVal === "title-asc" ? -1 : 1;
-      if (ta > tb) return sortVal === "title-asc" ? 1 : -1;
+      if (ta > tb) return sortVal === "title-asc" ?  1 : -1;
       return 0;
     });
 
@@ -129,9 +129,9 @@ noindex: true
     }
 
     const maxPage = Math.max(1, Math.ceil(filteredTabs.length / PAGE_SIZE));
-    const start = (currentPage - 1) * PAGE_SIZE;
-    const end = Math.min(start + PAGE_SIZE, filteredTabs.length);
-    const slice = filteredTabs.slice(start, end);
+    const start   = (currentPage - 1) * PAGE_SIZE;
+    const end     = Math.min(start + PAGE_SIZE, filteredTabs.length);
+    const slice   = filteredTabs.slice(start, end);
 
     const ul = document.createElement("ul");
     ul.className = "tab-list-ul";
@@ -179,42 +179,33 @@ noindex: true
 
     score.tracks.forEach(track => {
       const opt = document.createElement("option");
-      opt.value = String(track.index);   // stable index per score
+      opt.value = String(track.index);
       opt.textContent = track.name || ("Track " + (track.index + 1));
       trackSelect.appendChild(opt);
     });
   }
 
-  function buildLayoutConfig() {
-    if (currentLayout === 'page') {
-      // Page mode, tune these numbers if you want shorter/taller pages
-      return {
-        mode: 'page',
-        pageFormat: 'a4',
-        margin: 10,
-        stretchForce: 0
-      };
-    } else {
-      // Classic scrolling layout
-      return 'horizontal';
-    }
-  }
-
   function createAlphaTab(item) {
+    // wipe old viewer
     viewerContainer.innerHTML = "";
     currentScore = null;
 
-    alphaApi = new alphaTab.AlphaTabApi(viewerContainer, {
+    // build settings with correct layout mode
+    const settings = {
       file: item.file,
-      layout: buildLayoutConfig(),
       display: {
-        staveProfile: "tab"
+        staveProfile: "tab",
+        // this is the bit that actually toggles pages vs scroll
+        layoutMode: currentLayout === "page" ? "page" : "horizontal"
       },
       player: {
         enablePlayer: true,
-        soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2"
+        soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
+        scrollElement: document.querySelector(".at-viewport")
       }
-    });
+    };
+
+    alphaApi = new alphaTab.AlphaTabApi(viewerContainer, settings);
 
     alphaApi.scoreLoaded.on(function(score) {
       currentScore = score;
@@ -249,6 +240,16 @@ noindex: true
     });
   }
 
+  // Layout toggle: horizontal vs page
+  if (layoutSelect) {
+    layoutSelect.addEventListener("change", function() {
+      currentLayout = layoutSelect.value === "page" ? "page" : "horizontal";
+      if (currentTabItem) {
+        createAlphaTab(currentTabItem);
+      }
+    });
+  }
+
   // Playback controls
   if (playBtn) {
     playBtn.addEventListener("click", function() {
@@ -264,19 +265,6 @@ noindex: true
     });
   }
 
-  // Layout mode toggle: Scroll vs Pages
-  if (layoutSelect) {
-    layoutSelect.addEventListener("change", function() {
-      currentLayout = layoutSelect.value; // 'horizontal' or 'page'
-
-      // If a tab is already loaded, rebuild it with the new layout
-      if (currentTabItem) {
-        createAlphaTab(currentTabItem);
-      }
-    });
-  }
-
-  // Filters
   searchInput.addEventListener("input", function() {
     currentPage = 1;
     applyFiltersAndRender();
