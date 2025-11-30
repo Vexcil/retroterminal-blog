@@ -2,7 +2,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #000; /* solid black everywhere */
+  background: #000;
 }
 
 /* Base body styling */
@@ -20,7 +20,7 @@ body {
   min-height: 100vh;
 }
 
-/* Main content */
+/* Main content grows to push footer down */
 .main-content {
   padding: 2rem;
 }
@@ -34,11 +34,12 @@ a:hover {
   color: #0c6;
 }
 
-/* Header */
+/* Header and footer */
 header {
   background: #000;
   padding: 1rem 2rem;
   border-bottom: 1px solid #0f0;
+
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -79,7 +80,7 @@ footer {
   font-size: 1rem;
 }
 
-/* Hero */
+/* Hero sections on home */
 .hero {
   text-align: center;
   padding: 4rem 2rem;
@@ -154,7 +155,6 @@ option {
   border: 2px solid #0f0;
   padding: 5px;
   margin-top: 10px;
-  width: 200px;
   appearance: none;
 }
 select:focus {
@@ -184,7 +184,7 @@ select:focus {
   pointer-events: none;
 }
 
-/* VIEWPORT GLOWLINE */
+/* VIEWPORT-FIXED GLOWLINE */
 body::after {
   content: "";
   position: fixed;
@@ -206,15 +206,16 @@ body::after {
   background-size: 100% 48px;
   background-repeat: no-repeat;
 
-  animation: glowline-sweep 12.8s linear infinite,
-             glowline-flicker 0.18s infinite;
+  animation:
+    glowline-sweep 12.8s linear infinite,
+    glowline-flicker 0.18s infinite;
 }
 
-/* Glowline animation */
 @keyframes glowline-sweep {
   0%   { background-position: 0 -48px; }
   100% { background-position: 0 100%; }
 }
+
 @keyframes glowline-flicker {
   0%,100% { opacity: 0.22; }
   50%     { opacity: 0.30; }
@@ -226,7 +227,7 @@ body::after {
 }
 @keyframes colorsep {
   0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
-  50%     { text-shadow: 0px 0px 3px #0f0; }
+  50%     { text-shadow: 0 0 3px #0f0; }
 }
 
 /* Cursor blink */
@@ -277,6 +278,7 @@ body::after {
 }
 .post img {
   max-width: 50%;
+  height: auto;
   display: block;
   margin: 1.5rem auto;
 }
@@ -290,12 +292,15 @@ body::after {
 }
 .image-row img {
   max-width: 48%;
+  height: auto;
+  display: block;
+  margin: 0;
 }
 .image-row.image-row-3 img {
   max-width: 32%;
 }
 
-/* Mobile header fix */
+/* MOBILE HEADER FIX */
 @media (max-width: 720px) {
   header {
     flex-direction: column;
@@ -325,6 +330,7 @@ body::after {
 @media (max-width: 600px) {
   .image-row {
     flex-direction: column;
+    gap: 1rem;
   }
   .image-row img {
     max-width: 100%;
@@ -336,11 +342,12 @@ body::after {
    =========================== */
 
 .tabs-page {
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 0;
 }
 
+/* Search + sort controls */
 .tabs-controls {
   display: flex;
   flex-wrap: wrap;
@@ -354,11 +361,12 @@ body::after {
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P';
+  font-family: 'Press Start 2P', monospace;
   font-size: 0.8rem;
   box-sizing: border-box;
 }
 
+/* #tab-sort inherits global select styling, just tweak width */
 #tab-sort {
   width: auto;
   min-width: 180px;
@@ -370,7 +378,7 @@ body::after {
   list-style: none;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(0,255,0,0.3);
+  border: 1px solid rgba(0, 255, 0, 0.3);
 }
 
 .tab-list-item {
@@ -378,7 +386,7 @@ body::after {
   justify-content: space-between;
   align-items: center;
   padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid rgba(0,255,0,0.15);
+  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
 }
 
 .tab-list-item:last-child {
@@ -389,19 +397,21 @@ body::after {
   flex: 1;
   margin-right: 0.5rem;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* View button in list */
 .tab-list-item button {
   padding: 0.25rem 0.75rem;
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P';
+  font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
 }
+
 .tab-list-item button:hover {
   background: #0f0;
   color: #000;
@@ -420,67 +430,152 @@ body::after {
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P';
+  font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
 }
+
 .tabs-pagination button:disabled {
   opacity: 0.4;
+  cursor: default;
 }
 
-/* Control row */
-.tab-controls-row {
+#tab-page-info {
+  font-size: 0.8rem;
+}
+
+/* Viewer grid: sidebar + main area */
+.tabs-viewer-layout {
+  display: grid;
+  grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+/* Track sidebar */
+.tab-sidebar {
+  border: 1px solid rgba(0, 255, 0, 0.4);
+  padding: 0.75rem;
+  background: #000;
+  font-size: 0.8rem;
+}
+
+.tab-sidebar-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+}
+
+.track-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.track-item {
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
+}
+
+.track-item:last-child {
+  border-bottom: none;
+}
+
+.track-item:hover {
+  background: rgba(0, 255, 0, 0.12);
+}
+
+.track-item-active {
+  background: rgba(0, 255, 0, 0.24);
+}
+
+/* Main tab area */
+.tab-main-area {
+  min-width: 0;
+}
+
+/* Toolbar */
+.tab-toolbar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 0.75rem;
 }
 
-.tab-track-select label,
-.tab-layout-select label {
-  margin-right: 0.5rem;
+.tab-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
-/* Player controls */
-.tab-player-controls button {
+.tab-toolbar button,
+.tab-toolbar .tab-download-link {
   background: #000;
   color: #0f0;
   border: 1px solid #0f0;
   padding: 0.25rem 0.75rem;
-  font-family: 'Press Start 2P';
+  font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
-  margin-right: 0.5rem;
 }
-.tab-player-controls button:hover {
+
+.tab-toolbar button:hover,
+.tab-toolbar .tab-download-link:hover {
   background: #0f0;
   color: #000;
 }
 
-/* AlphaTab viewport */
+#layout-select,
+#speed-select,
+#zoom-select {
+  margin-top: 0;
+  padding: 0.1rem 0.25rem;
+  border-width: 1px;
+}
+
+/* AlphaTab viewer container */
 .at-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0,255,0,0.4);
+  border: 1px solid rgba(0, 255, 0, 0.4);
   padding: 0.5rem;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
   background: #000;
 }
+
 .at-viewport {
-  min-height: 200px;
+  min-height: 300px;
 }
 
+/* Keep notation from overflowing awkwardly */
 .at-main svg {
-  max-width: 100%;
+  max-width: none;
 }
 
-/* Mobile layout */
+/* Mobile tweaks */
+@media (max-width: 900px) {
+  .tabs-viewer-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .tab-sidebar {
+    max-height: 200px;
+    overflow-y: auto;
+  }
+}
+
 @media (max-width: 600px) {
   .tabs-controls {
     flex-direction: column;
+    align-items: stretch;
   }
 
-  #tab-search,
+  #tab-search {
+    width: 100%;
+  }
+
   #tab-sort {
     width: 100%;
   }
@@ -489,14 +584,14 @@ body::after {
     max-width: 70%;
   }
 
-  .tab-controls-row {
+  .tab-toolbar {
     flex-direction: column;
     align-items: flex-start;
   }
 }
 
 /* ============================================
-   AlphaTab text readability
+   AlphaTab text readability (green only for text)
    ============================================ */
 
 .at-main text {
@@ -504,33 +599,31 @@ body::after {
   stroke: #0f0 !important;
   stroke-width: 0.6px !important;
   paint-order: stroke fill;
-  text-shadow: 0 0 4px rgba(0,255,0,0.45);
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
 }
+
 /* ============================================
-   AlphaTab playback cursors (CRT-style, non-blocking)
+   AlphaTab playback cursor styling
    ============================================ */
 
-/* Bar cursor: soft green glow band over the current bar */
+/* Try not to block clicks */
+.at-cursor,
+.at-selection {
+  pointer-events: none;
+}
+
+/* Vertical bar cursor, CRT glow */
 .at-cursor-bar {
-  background: linear-gradient(
-    to right,
-    rgba(0, 255, 0, 0.00) 0%,
-    rgba(0, 255, 0, 0.22) 50%,
-    rgba(0, 255, 0, 0.00) 100%
-  );
-  pointer-events: none;
+  stroke: #0f0;
+  stroke-width: 2px;
+  fill: none;
+  filter: drop-shadow(0 0 6px rgba(0, 255, 0, 0.9));
 }
 
-/* Beat cursor: thin bright line with CRT glow */
+/* Beat marker, outline only so numbers stay visible */
 .at-cursor-beat {
-  background: rgba(0, 255, 0, 0.85);
-  width: 2px;
-  box-shadow: 0 0 6px rgba(0, 255, 0, 0.9);
-  pointer-events: none;
-}
-
-/* Currently played symbols: slightly brighter green, no fill block */
-.at-highlight * {
-  fill: #bfff9f;
-  stroke: #bfff9f;
+  stroke: #0f0;
+  stroke-width: 1.5px;
+  fill: transparent;
+  filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.8));
 }
