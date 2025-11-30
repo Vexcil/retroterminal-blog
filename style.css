@@ -201,10 +201,10 @@ body::after {
     to bottom,
     rgba(0,255,0,0.0) 0px,
     rgba(0,255,0,0.0) 6px,
-    rgba(0,255,0,0.25) 8px,    /* main beam area, dim */
-    rgba(0,255,0,0.12) 30px,   /* glow */
-    rgba(0,255,0,0.04) 44px,   /* tail */
-    rgba(0,255,0,0.0) 48px     /* fade */
+    rgba(0,255,0,0.25) 8px,
+    rgba(0,255,0,0.12) 30px,
+    rgba(0,255,0,0.04) 44px,
+    rgba(0,255,0,0.0) 48px
   );
 
   background-size: 100% 48px;
@@ -310,7 +310,7 @@ body::after {
 @media (max-width: 720px) {
   header {
     flex-direction: column;
-    align-items: flex-start;
+  align-items: flex-start;
     padding: 1rem;
   }
 
@@ -468,7 +468,36 @@ body::after {
   max-width: 100%;
 }
 
-/* Mobile tweaks for tabs page */
+/* Top row with track select + player controls */
+.tab-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tab-track-select label {
+  margin-right: 0.5rem;
+}
+
+/* Player controls */
+.tab-player-controls button {
+  background: #000;
+  color: #0f0;
+  border: 1px solid #0f0;
+  padding: 0.25rem 0.75rem;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  margin-right: 0.5rem;
+}
+
+.tab-player-controls button:hover {
+  background: #0f0;
+  color: #000;
+}
+
 @media (max-width: 600px) {
   .tabs-controls {
     flex-direction: column;
@@ -486,21 +515,22 @@ body::after {
   .tab-title {
     max-width: 70%;
   }
+
+  .tab-controls-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
+
 /* ============================================
    AlphaTab text readability (green only for text)
    ============================================ */
 
 /* All text elements: note numbers, symbols, tempo, etc. */
 .at-main text {
-  fill: #0f0 !important;           /* solid green text */
-  stroke: #0f0 !important;         /* thin outline to keep letters sharp */
+  fill: #0f0 !important;
+  stroke: #0f0 !important;
   stroke-width: 0.6px !important;
   paint-order: stroke fill;
+  text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
 }
-
-/* Optional: a subtle glow that matches the site */
-.at-main text {
-  text-shadow: 0 0 4px rgba(0,255,0,0.45);
-}
-
