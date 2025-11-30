@@ -38,6 +38,14 @@ noindex: true
       <button id="tab-play">Play / Pause</button>
       <button id="tab-stop">Stop</button>
     </div>
+
+    <div class="tab-layout-select">
+      <label for="layout-select">Layout:</label>
+      <select id="layout-select">
+        <option value="horizontal">Scroll</option>
+        <option value="page">Pages</option>
+      </select>
+    </div>
   </div>
 
   <p id="current-tab-title"></p>
@@ -68,9 +76,12 @@ noindex: true
   const trackSelect = document.getElementById('track-select');
   const playBtn = document.getElementById('tab-play');
   const stopBtn = document.getElementById('tab-stop');
+  const layoutSelect = document.getElementById('layout-select');
 
   let alphaApi = null;
   let currentScore = null;
+  let currentLayout = 'horizontal'; // 'horizontal' or 'page'
+  let currentTabItem = null;        // remember which file is loaded
 
   function loadIndex() {
     fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
@@ -174,13 +185,28 @@ noindex: true
     });
   }
 
-  function loadTab(item) {
-    currentTitleEl.textContent = item.title;
+  function buildLayoutConfig() {
+    if (currentLayout === 'page') {
+      // Page mode, tune these numbers if you want shorter/taller pages
+      return {
+        mode: 'page',
+        pageFormat: 'a4',
+        margin: 10,
+        stretchForce: 0
+      };
+    } else {
+      // Classic scrolling layout
+      return 'horizontal';
+    }
+  }
+
+  function createAlphaTab(item) {
     viewerContainer.innerHTML = "";
+    currentScore = null;
 
     alphaApi = new alphaTab.AlphaTabApi(viewerContainer, {
       file: item.file,
-      layout: "horizontal",
+      layout: buildLayoutConfig(),
       display: {
         staveProfile: "tab"
       },
@@ -194,6 +220,12 @@ noindex: true
       currentScore = score;
       populateTracks(score);
     });
+  }
+
+  function loadTab(item) {
+    currentTabItem = item;
+    currentTitleEl.textContent = item.title;
+    createAlphaTab(item);
   }
 
   // Track selection handler
@@ -232,6 +264,19 @@ noindex: true
     });
   }
 
+  // Layout mode toggle: Scroll vs Pages
+  if (layoutSelect) {
+    layoutSelect.addEventListener("change", function() {
+      currentLayout = layoutSelect.value; // 'horizontal' or 'page'
+
+      // If a tab is already loaded, rebuild it with the new layout
+      if (currentTabItem) {
+        createAlphaTab(currentTabItem);
+      }
+    });
+  }
+
+  // Filters
   searchInput.addEventListener("input", function() {
     currentPage = 1;
     applyFiltersAndRender();

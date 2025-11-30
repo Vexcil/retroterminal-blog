@@ -20,7 +20,7 @@ body {
   min-height: 100vh;
 }
 
-/* Main content grows to push footer down */
+/* Main content */
 .main-content {
   padding: 2rem;
 }
@@ -34,12 +34,11 @@ a:hover {
   color: #0c6;
 }
 
-/* Header and footer */
+/* Header */
 header {
   background: #000;
   padding: 1rem 2rem;
   border-bottom: 1px solid #0f0;
-
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -80,7 +79,7 @@ footer {
   font-size: 1rem;
 }
 
-/* Hero sections on home */
+/* Hero */
 .hero {
   text-align: center;
   padding: 4rem 2rem;
@@ -171,24 +170,21 @@ select:focus {
   overflow: hidden;
 }
 
-/* INVERTED STATIC SCANLINES (new version) */
+/* INVERTED STATIC SCANLINES */
 .crt::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
 
   background:
-    /* inverted scanline: dark first, clear second */
     linear-gradient(rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 50%),
-
-    /* soft vertical tint */
     linear-gradient(90deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02));
 
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
 }
 
-/* VIEWPORT-FIXED GLOWLINE (thicker, dimmer, slower) */
+/* VIEWPORT GLOWLINE */
 body::after {
   content: "";
   position: fixed;
@@ -210,18 +206,15 @@ body::after {
   background-size: 100% 48px;
   background-repeat: no-repeat;
 
-  animation:
-    glowline-sweep 12.8s linear infinite,
-    glowline-flicker 0.18s infinite;
+  animation: glowline-sweep 12.8s linear infinite,
+             glowline-flicker 0.18s infinite;
 }
 
-/* Slow viewport sweep */
+/* Glowline animation */
 @keyframes glowline-sweep {
   0%   { background-position: 0 -48px; }
   100% { background-position: 0 100%; }
 }
-
-/* Dim flicker */
 @keyframes glowline-flicker {
   0%,100% { opacity: 0.22; }
   50%     { opacity: 0.30; }
@@ -284,7 +277,6 @@ body::after {
 }
 .post img {
   max-width: 50%;
-  height: auto;
   display: block;
   margin: 1.5rem auto;
 }
@@ -298,19 +290,16 @@ body::after {
 }
 .image-row img {
   max-width: 48%;
-  height: auto;
-  display: block;
-  margin: 0;
 }
 .image-row.image-row-3 img {
   max-width: 32%;
 }
 
-/* MOBILE HEADER FIX: avoid horizontal scroll */
+/* Mobile header fix */
 @media (max-width: 720px) {
   header {
     flex-direction: column;
-  align-items: flex-start;
+    align-items: flex-start;
     padding: 1rem;
   }
 
@@ -336,7 +325,6 @@ body::after {
 @media (max-width: 600px) {
   .image-row {
     flex-direction: column;
-    gap: 1rem;
   }
   .image-row img {
     max-width: 100%;
@@ -353,7 +341,6 @@ body::after {
   padding: 2rem 0;
 }
 
-/* Search + sort controls */
 .tabs-controls {
   display: flex;
   flex-wrap: wrap;
@@ -367,12 +354,11 @@ body::after {
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'Press Start 2P';
   font-size: 0.8rem;
   box-sizing: border-box;
 }
 
-/* #tab-sort inherits global select styling, just tweak width */
 #tab-sort {
   width: auto;
   min-width: 180px;
@@ -384,7 +370,7 @@ body::after {
   list-style: none;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(0, 255, 0, 0.3);
+  border: 1px solid rgba(0,255,0,0.3);
 }
 
 .tab-list-item {
@@ -392,7 +378,7 @@ body::after {
   justify-content: space-between;
   align-items: center;
   padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
+  border-bottom: 1px solid rgba(0,255,0,0.15);
 }
 
 .tab-list-item:last-child {
@@ -403,21 +389,19 @@ body::after {
   flex: 1;
   margin-right: 0.5rem;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
-/* View button in list */
 .tab-list-item button {
   padding: 0.25rem 0.75rem;
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'Press Start 2P';
   font-size: 0.7rem;
   cursor: pointer;
 }
-
 .tab-list-item button:hover {
   background: #0f0;
   color: #000;
@@ -436,39 +420,15 @@ body::after {
   background: #000;
   border: 1px solid #0f0;
   color: #0f0;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'Press Start 2P';
   font-size: 0.7rem;
   cursor: pointer;
 }
-
 .tabs-pagination button:disabled {
   opacity: 0.4;
-  cursor: default;
 }
 
-#tab-page-info {
-  font-size: 0.8rem;
-}
-
-/* AlphaTab viewer container */
-.at-wrap {
-  overflow-x: auto;
-  border: 1px solid rgba(0, 255, 0, 0.4);
-  padding: 0.5rem;
-  margin-top: 1rem;
-  background: #000;
-}
-
-.at-viewport {
-  min-height: 200px;
-}
-
-/* Keep notation from overflowing awkwardly */
-.at-main svg {
-  max-width: 100%;
-}
-
-/* Top row with track select + player controls */
+/* Control row */
 .tab-controls-row {
   display: flex;
   flex-wrap: wrap;
@@ -477,7 +437,8 @@ body::after {
   margin-bottom: 0.75rem;
 }
 
-.tab-track-select label {
+.tab-track-select label,
+.tab-layout-select label {
   margin-right: 0.5rem;
 }
 
@@ -487,27 +448,39 @@ body::after {
   color: #0f0;
   border: 1px solid #0f0;
   padding: 0.25rem 0.75rem;
-  font-family: 'Press Start 2P', monospace;
+  font-family: 'Press Start 2P';
   font-size: 0.7rem;
   cursor: pointer;
   margin-right: 0.5rem;
 }
-
 .tab-player-controls button:hover {
   background: #0f0;
   color: #000;
 }
 
+/* AlphaTab viewport */
+.at-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0,255,0,0.4);
+  padding: 0.5rem;
+  margin-top: 1rem;
+  background: #000;
+}
+.at-viewport {
+  min-height: 200px;
+}
+
+.at-main svg {
+  max-width: 100%;
+}
+
+/* Mobile layout */
 @media (max-width: 600px) {
   .tabs-controls {
     flex-direction: column;
-    align-items: stretch;
   }
 
-  #tab-search {
-    width: 100%;
-  }
-
+  #tab-search,
   #tab-sort {
     width: 100%;
   }
@@ -523,14 +496,13 @@ body::after {
 }
 
 /* ============================================
-   AlphaTab text readability (green only for text)
+   AlphaTab text readability
    ============================================ */
 
-/* All text elements: note numbers, symbols, tempo, etc. */
 .at-main text {
   fill: #0f0 !important;
   stroke: #0f0 !important;
   stroke-width: 0.6px !important;
   paint-order: stroke fill;
-  text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
+  text-shadow: 0 0 4px rgba(0,255,0,0.45);
 }
