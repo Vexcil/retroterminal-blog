@@ -2,7 +2,7 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #000;
+  background: #000; /* solid black everywhere */
 }
 
 /* Base body styling */
@@ -155,6 +155,7 @@ option {
   border: 2px solid #0f0;
   padding: 5px;
   margin-top: 10px;
+  width: 200px;
   appearance: none;
 }
 select:focus {
@@ -227,7 +228,7 @@ body::after {
 }
 @keyframes colorsep {
   0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
-  50%     { text-shadow: 0 0 3px #0f0; }
+  50%     { text-shadow: 0px 0px 3px #0f0; }
 }
 
 /* Cursor blink */
@@ -444,75 +445,91 @@ body::after {
   font-size: 0.8rem;
 }
 
-/* Viewer grid: sidebar + main area */
-.tabs-viewer-layout {
-  display: grid;
-  grid-template-columns: minmax(190px, 260px) minmax(0, 1fr);
-  gap: 1.5rem;
+/* Viewer shell: sidebar + main */
+.tabs-viewer-shell {
+  display: flex;
+  gap: 1rem;
   margin-top: 1rem;
 }
 
 /* Track sidebar */
-.tab-sidebar {
+.at-sidebar {
+  width: 170px;
   border: 1px solid rgba(0, 255, 0, 0.4);
-  padding: 0.75rem;
+  padding: 0.5rem;
+  box-sizing: border-box;
   background: #000;
-  font-size: 0.8rem;
 }
 
-.tab-sidebar-title {
-  margin: 0 0 0.5rem 0;
+.at-sidebar-title {
   font-size: 0.9rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(0, 255, 0, 0.4);
+  padding-bottom: 0.25rem;
 }
 
-.track-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 500px;
-  overflow-y: auto;
+.at-sidebar-empty {
+  font-size: 0.75rem;
+  opacity: 0.8;
 }
 
-.track-item {
-  padding: 0.25rem 0.5rem;
-  cursor: pointer;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
-}
-
-.track-item:last-child {
-  border-bottom: none;
-}
-
-.track-item:hover {
-  background: rgba(0, 255, 0, 0.12);
-}
-
-.track-item-active {
-  background: rgba(0, 255, 0, 0.24);
-}
-
-/* Main tab area */
-.tab-main-area {
-  min-width: 0;
-}
-
-/* Toolbar */
-.tab-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 0.75rem;
-}
-
-.tab-toolbar-group {
+.at-track-row {
   display: flex;
   align-items: center;
   gap: 0.4rem;
+  padding: 0.2rem 0.3rem;
+  margin-bottom: 0.15rem;
+  cursor: pointer;
+  border-radius: 2px;
 }
 
-.tab-toolbar button,
-.tab-toolbar .tab-download-link {
+.at-track-row-all {
+  margin-bottom: 0.5rem;
+  border-bottom: 1px dashed rgba(0, 255, 0, 0.4);
+  padding-bottom: 0.3rem;
+}
+
+.at-track-row:hover {
+  background: rgba(0, 255, 0, 0.1);
+}
+
+.at-track-row.active {
+  background: rgba(0, 255, 0, 0.3);
+  color: #000;
+}
+
+.at-track-icon {
+  font-size: 0.8rem;
+}
+
+.at-track-name {
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Main viewer column */
+.tabs-viewer-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Top row with layout select + player controls */
+.tab-controls-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.tab-layout-select label {
+  margin-right: 0.5rem;
+}
+
+/* Player controls */
+.tab-player-controls button {
   background: #000;
   color: #0f0;
   border: 1px solid #0f0;
@@ -520,20 +537,12 @@ body::after {
   font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
+  margin-right: 0.5rem;
 }
 
-.tab-toolbar button:hover,
-.tab-toolbar .tab-download-link:hover {
+.tab-player-controls button:hover {
   background: #0f0;
   color: #000;
-}
-
-#layout-select,
-#speed-select,
-#zoom-select {
-  margin-top: 0;
-  padding: 0.1rem 0.25rem;
-  border-width: 1px;
 }
 
 /* AlphaTab viewer container */
@@ -546,23 +555,27 @@ body::after {
 }
 
 .at-viewport {
-  min-height: 300px;
+  min-height: 200px;
 }
 
 /* Keep notation from overflowing awkwardly */
 .at-main svg {
-  max-width: none;
+  max-width: 100%;
 }
 
-/* Mobile tweaks */
+/* Mobile tweaks for tabs page */
 @media (max-width: 900px) {
-  .tabs-viewer-layout {
-    grid-template-columns: 1fr;
+  .tabs-viewer-shell {
+    flex-direction: column;
   }
 
-  .tab-sidebar {
-    max-height: 200px;
-    overflow-y: auto;
+  .at-sidebar {
+    width: 100%;
+    order: 2;
+  }
+
+  .tabs-viewer-main {
+    order: 1;
   }
 }
 
@@ -584,16 +597,13 @@ body::after {
     max-width: 70%;
   }
 
-  .tab-toolbar {
+  .tab-controls-row {
     flex-direction: column;
     align-items: flex-start;
   }
 }
 
-/* ============================================
-   AlphaTab text readability (green only for text)
-   ============================================ */
-
+/* AlphaTab text readability: green notes, dark staff */
 .at-main text {
   fill: #0f0 !important;
   stroke: #0f0 !important;
@@ -602,28 +612,18 @@ body::after {
   text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
 }
 
-/* ============================================
-   AlphaTab playback cursor styling
-   ============================================ */
-
-/* Try not to block clicks */
-.at-cursor,
-.at-selection {
-  pointer-events: none;
+/* Optional: darken staff lines slightly without blasting them out */
+.at-main line,
+.at-main path {
+  stroke: rgba(0, 255, 0, 0.7);
 }
 
-/* Vertical bar cursor, CRT glow */
-.at-cursor-bar {
-  stroke: #0f0;
-  stroke-width: 2px;
-  fill: none;
-  filter: drop-shadow(0 0 6px rgba(0, 255, 0, 0.9));
+/* Make the built-in play cursor a CRT-ish bar without completely hiding numbers */
+#alphaTab .at-cursor-bar {
+  background: rgba(0, 255, 0, 0.12);
 }
 
-/* Beat marker, outline only so numbers stay visible */
-.at-cursor-beat {
-  stroke: #0f0;
-  stroke-width: 1.5px;
-  fill: transparent;
-  filter: drop-shadow(0 0 4px rgba(0, 255, 0, 0.8));
+#alphaTab .at-cursor-beat {
+  background: rgba(0, 255, 0, 0.25);
+  mix-blend-mode: screen;
 }
