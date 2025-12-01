@@ -26,36 +26,28 @@ noindex: true
 
   <h2>Viewer</h2>
 
+  <div class="tab-controls-row">
+    <div class="tab-player-controls">
+      <button id="tab-play">Play</button>
+      <button id="tab-stop">Stop</button>
+    </div>
+
+    <div class="tab-layout-select">
+      <label for="layout-select">Layout:</label>
+      <select id="layout-select">
+        <option value="page" selected>Pages</option>
+        <option value="horizontal">Scroll</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Track panel with mute / solo / volume, collapsed rows -->
+  <div id="track-panel" class="track-panel"></div>
+
   <p id="current-tab-title"></p>
-
-  <!-- Viewer shell: track sidebar + main area -->
-  <div class="tabs-viewer-shell">
-    <aside class="at-sidebar" id="track-sidebar">
-      <div class="at-sidebar-title">Tracks</div>
-      <div class="at-sidebar-empty">Load a tab to see tracks.</div>
-    </aside>
-
-    <div class="tabs-viewer-main">
-      <div class="tab-controls-row">
-        <div class="tab-layout-select">
-          <label for="layout-select">Layout:</label>
-          <select id="layout-select">
-            <option value="horizontal">Scroll</option>
-            <option value="page">Pages</option>
-          </select>
-        </div>
-
-        <div class="tab-player-controls">
-          <button id="tab-play">Play / Pause</button>
-          <button id="tab-stop">Stop</button>
-        </div>
-      </div>
-
-      <div class="at-wrap">
-        <div class="at-viewport">
-          <div class="at-main" id="alphaTab"></div>
-        </div>
-      </div>
+  <div class="at-wrap">
+    <div class="at-viewport">
+      <div class="at-main" id="alphaTab"></div>
     </div>
   </div>
 </div>
@@ -77,15 +69,18 @@ noindex: true
   const nextBtn         = document.getElementById('tab-next');
   const currentTitleEl  = document.getElementById('current-tab-title');
   const viewerContainer = document.getElementById('alphaTab');
-  const layoutSelect    = document.getElementById('layout-select');
   const playBtn         = document.getElementById('tab-play');
   const stopBtn         = document.getElementById('tab-stop');
-  const trackSidebar    = document.getElementById('track-sidebar');
+  const layoutSelect    = document.getElementById('layout-select');
+  const trackPanel      = document.getElementById('track-panel');
 
-  let alphaApi        = null;
-  let currentScore    = null;
-  let currentTabItem  = null;
-  let currentLayout   = 'Horizontal'; // "Horizontal" or "Page"
+  let alphaApi       = null;
+  let currentScore   = null;
+  let currentLayout  = 'page'; // default to page layout
+  let currentTabItem = null;
+
+  // simple per-track state cache for UI
+  const trackState = {}; // index -> { mute: bool, solo: bool, volume: number }
 
   function loadIndex() {
     fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
@@ -166,99 +161,129 @@ noindex: true
     nextBtn.disabled = currentPage >= maxPage;
   }
 
-  function clearTrackSidebar() {
-    if (!trackSidebar) return;
-    trackSidebar.innerHTML = '';
-
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'at-sidebar-title';
-    titleDiv.textContent = 'Tracks';
-    trackSidebar.appendChild(titleDiv);
-
-    const empty = document.createElement('div');
-    empty.className = 'at-sidebar-empty';
-    empty.textContent = 'Load a tab to see tracks.';
-    trackSidebar.appendChild(empty);
-  }
-
-  function buildTrackSidebar(score) {
-    if (!trackSidebar) return;
-
-    trackSidebar.innerHTML = '';
-
-    const titleDiv = document.createElement('div');
-    titleDiv.className = 'at-sidebar-title';
-    titleDiv.textContent = 'Tracks';
-    trackSidebar.appendChild(titleDiv);
-
-    if (!score.tracks || score.tracks.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'at-sidebar-empty';
-      empty.textContent = 'No tracks available.';
-      trackSidebar.appendChild(empty);
-      return;
-    }
+  function buildTrackPanel(score) {
+    if (!trackPanel || !score || !score.tracks) return;
+    trackPanel.innerHTML = "";
 
     score.tracks.forEach(track => {
+      const idx = track.index;
+
+      if (!trackState[idx]) {
+        trackState[idx] = {
+          mute: false,
+          solo: false,
+          volume: 12  // mid volume by default
+        };
+      }
+
+      const state = trackState[idx];
+
       const row = document.createElement('div');
-      row.className = 'at-track-row';
-      row.dataset.index = String(track.index);
+      row.className = 'track-row collapsed';
+      row.dataset.index = String(idx);
+
+      const header = document.createElement('div');
+      header.className = 'track-header';
 
       const icon = document.createElement('div');
-      icon.className = 'at-track-icon';
-      icon.textContent = '♪';
+      icon.className = 'track-icon';
+      icon.textContent = 'TR'; // small label, no emoji
 
-      const nameSpan = document.createElement('span');
-      nameSpan.className = 'at-track-name';
-      nameSpan.textContent = track.name || ('Track ' + (track.index + 1));
+      const name = document.createElement('div');
+      name.className = 'track-name';
+      name.textContent = track.name || ("Track " + (idx + 1));
 
-      row.appendChild(icon);
-      row.appendChild(nameSpan);
+      header.appendChild(icon);
+      header.appendChild(name);
+      row.appendChild(header);
 
-      row.addEventListener('click', function() {
-        if (!alphaApi || !currentScore) return;
+      const controls = document.createElement('div');
+      controls.className = 'track-controls';
 
-        // Mark active row
-        trackSidebar.querySelectorAll('.at-track-row').forEach(r => {
-          r.classList.remove('active');
-        });
-        row.classList.add('active');
+      const muteBtn = document.createElement('button');
+      muteBtn.className = 'track-btn track-btn-mute';
+      muteBtn.textContent = 'Mute';
+      if (state.mute) muteBtn.classList.add('active');
 
-        // Render only this track
-        alphaApi.renderTracks([track]);
+      const soloBtn = document.createElement('button');
+      soloBtn.className = 'track-btn track-btn-solo';
+      soloBtn.textContent = 'Solo';
+      if (state.solo) soloBtn.classList.add('active');
+
+      const volWrap = document.createElement('div');
+      volWrap.className = 'track-volume-wrap';
+
+      const volLabel = document.createElement('span');
+      volLabel.className = 'track-volume-label';
+      volLabel.textContent = 'Vol';
+
+      const volInput = document.createElement('input');
+      volInput.type = 'range';
+      volInput.min = '0';
+      volInput.max = '16';
+      volInput.value = String(state.volume);
+      volInput.className = 'track-volume';
+
+      volWrap.appendChild(volLabel);
+      volWrap.appendChild(volInput);
+
+      controls.appendChild(muteBtn);
+      controls.appendChild(soloBtn);
+      controls.appendChild(volWrap);
+
+      row.appendChild(controls);
+      trackPanel.appendChild(row);
+
+      // click header to expand/collapse
+      header.addEventListener('click', function() {
+        row.classList.toggle('collapsed');
       });
 
-      trackSidebar.appendChild(row);
-    });
+      // mute toggle
+      muteBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        state.mute = !state.mute;
+        muteBtn.classList.toggle('active', state.mute);
 
-    // Default: show all tracks as active "virtual" entry
-    const allRow = document.createElement('div');
-    allRow.className = 'at-track-row at-track-row-all active';
-    allRow.textContent = 'All tracks';
-    allRow.addEventListener('click', function() {
-      if (!alphaApi || !currentScore) return;
-      trackSidebar.querySelectorAll('.at-track-row').forEach(r => {
-        r.classList.remove('active');
+        if (alphaApi && typeof alphaApi.changeTrackMute === 'function') {
+          alphaApi.changeTrackMute(idx, state.mute);
+        }
       });
-      allRow.classList.add('active');
-      alphaApi.renderScore(currentScore);
-    });
 
-    // Insert "All tracks" at top below title
-    const firstTrack = trackSidebar.querySelector('.at-track-row');
-    trackSidebar.insertBefore(allRow, firstTrack);
+      // solo toggle
+      soloBtn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        state.solo = !state.solo;
+        soloBtn.classList.toggle('active', state.solo);
+
+        if (alphaApi && typeof alphaApi.changeTrackSolo === 'function') {
+          alphaApi.changeTrackSolo(idx, state.solo);
+        }
+      });
+
+      // volume slider
+      volInput.addEventListener('input', function(ev) {
+        ev.stopPropagation();
+        const v = parseInt(volInput.value, 10);
+        if (!isNaN(v)) {
+          state.volume = v;
+          if (alphaApi && typeof alphaApi.changeTrackVolume === 'function') {
+            alphaApi.changeTrackVolume(idx, v);
+          }
+        }
+      });
+    });
   }
 
   function createAlphaTab(item) {
-    viewerContainer.innerHTML = '';
+    viewerContainer.innerHTML = "";
     currentScore = null;
-    clearTrackSidebar();
 
     const settings = {
       file: item.file,
       display: {
         staveProfile: "tab",
-        layoutMode: currentLayout // "Horizontal" or "Page"
+        layoutMode: currentLayout === "page" ? "page" : "horizontal"
       },
       player: {
         enablePlayer: true,
@@ -271,7 +296,7 @@ noindex: true
 
     alphaApi.scoreLoaded.on(function(score) {
       currentScore = score;
-      buildTrackSidebar(score);
+      buildTrackPanel(score);
     });
   }
 
@@ -281,36 +306,39 @@ noindex: true
     createAlphaTab(item);
   }
 
-  // Layout toggle
+  // layout switch: page vs horizontal
   if (layoutSelect) {
+    layoutSelect.value = 'page';
     layoutSelect.addEventListener('change', function() {
-      if (layoutSelect.value === 'page') {
-        currentLayout = 'Page';
-      } else {
-        currentLayout = 'Horizontal';
-      }
+      currentLayout = layoutSelect.value === 'horizontal' ? 'horizontal' : 'page';
       if (currentTabItem) {
         createAlphaTab(currentTabItem);
       }
     });
   }
 
-  // Playback controls
+  // playback: separate Play and Stop
   if (playBtn) {
     playBtn.addEventListener('click', function() {
       if (!alphaApi) return;
-      alphaApi.playPause();
+      // play() will start or resume depending on alphaTab version
+      if (typeof alphaApi.play === 'function') {
+        alphaApi.play();
+      } else if (typeof alphaApi.playPause === 'function') {
+        alphaApi.playPause();
+      }
     });
   }
 
   if (stopBtn) {
     stopBtn.addEventListener('click', function() {
       if (!alphaApi) return;
-      alphaApi.stop();
+      if (typeof alphaApi.stop === 'function') {
+        alphaApi.stop();
+      }
     });
   }
 
-  // Search / sort / paginate
   searchInput.addEventListener("input", function() {
     currentPage = 1;
     applyFiltersAndRender();
