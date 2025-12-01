@@ -343,9 +343,11 @@ body::after {
    =========================== */
 
 .tabs-page {
-  max-width: 1200px;
+  /* wider, auto-expanding container for the tabs page */
+  width: min(90vw, 1600px);
   margin: 0 auto;
-  padding: 2rem 0;
+  padding: 2rem 1rem;
+  box-sizing: border-box;
 }
 
 /* Search + sort controls */
@@ -547,6 +549,8 @@ body::after {
 
 /* AlphaTab viewer container */
 .at-wrap {
+  width: 100%;
+  box-sizing: border-box;
   overflow-x: auto;
   border: 1px solid rgba(0, 255, 0, 0.4);
   padding: 0.5rem;
