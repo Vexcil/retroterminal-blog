@@ -1,353 +1,11 @@
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: #000; /* solid black everywhere */
-}
-
-/* Base body styling */
-body {
-  color: #0f0;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 12px;
-  position: relative;
-  overflow-x: hidden;
-}
-
-/* Screen wrapper so background and footer run full height */
-#screen {
-  position: relative;
-  min-height: 100vh;
-}
-
-/* Main content grows to push footer down */
-.main-content {
-  padding: 2rem;
-}
-
-/* Links */
-a {
-  color: #0f0;
-  text-decoration: none;
-}
-a:hover {
-  color: #0c6;
-}
-
-/* Header and footer */
-header {
-  background: #000;
-  padding: 1rem 2rem;
-  border-bottom: 1px solid #0f0;
-
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1rem;
-  box-sizing: border-box;
-}
-
-header h1 {
-  margin: 0;
-}
-
-/* Navigation */
-.nav-links {
-  list-style: none;
-  display: flex;
-  gap: 1rem;
-  margin: 0;
-  padding: 0;
-}
-
-/* Generic nav button style */
-.nav-links .btn {
-  display: inline-block;
-  padding: 0.25rem 0.75rem;
-  border: 1px solid #0f0;
-}
-
-/* Footer */
-footer {
-  background: #000;
-  padding: 1rem 2rem;
-  border-top: 1px solid #0f0;
-  margin-top: 2rem;
-  text-align: center;
-}
-.social-icons a {
-  margin: 0 0.5rem;
-  font-size: 1rem;
-}
-
-/* Hero sections on home */
-.hero {
-  text-align: center;
-  padding: 4rem 2rem;
-  padding-top: 1rem;
-  border-bottom: 1px dashed #0f0;
-}
-.hero .btn {
-  display: inline-block;
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: 2px solid #0f0;
-  color: #0f0;
-  cursor: pointer;
-}
-.hero .btn:hover {
-  background: #0f0;
-  color: #000;
-}
-
-/* Services */
-.services {
-  padding: 2rem;
-  border-bottom: 1px dashed #0f0;
-}
-.service-cards {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-.card {
-  background: #000;
-  border: 1px solid #0f0;
-  padding: 1rem;
-  width: 200px;
-}
-
-/* Contact form */
-.contact {
-  padding: 2rem;
-}
-form {
-  display: flex;
-  flex-direction: column;
-  max-width: 400px;
-  margin: auto;
-  gap: 1rem;
-}
-input,
-textarea,
-button {
-  background: #000;
-  border: 1px solid #0f0;
-  color: #0f0;
-  padding: 0.5rem;
-  font-family: 'Press Start 2P', monospace;
-}
-button {
-  cursor: pointer;
-}
-button:hover {
-  background: #0f0;
-  color: #000;
-}
-select,
-option {
-  font-family: 'Press Start 2P', monospace;
-  background-color: #000;
-  color: #0f0;
-  border: 2px solid #0f0;
-  padding: 5px;
-  margin-top: 10px;
-  width: 200px;
-  appearance: none;
-}
-select:focus {
-  outline: none;
-  border-color: #0f0;
-  box-shadow: 0 0 8px #0f0;
-}
-
-/* CRT container */
-.crt {
-  position: relative;
-  z-index: 1;
-  overflow: hidden;
-}
-
-/* INVERTED STATIC SCANLINES */
-.crt::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-
-  background:
-    linear-gradient(rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 50%),
-    linear-gradient(90deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02));
-
-  background-size: 100% 2px, 3px 100%;
-  pointer-events: none;
-}
-
-/* VIEWPORT-FIXED GLOWLINE */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  mix-blend-mode: screen;
-  z-index: 2;
-
-  background-image: linear-gradient(
-    to bottom,
-    rgba(0,255,0,0.0) 0px,
-    rgba(0,255,0,0.0) 6px,
-    rgba(0,255,0,0.25) 8px,
-    rgba(0,255,0,0.12) 30px,
-    rgba(0,255,0,0.04) 44px,
-    rgba(0,255,0,0.0) 48px
-  );
-
-  background-size: 100% 48px;
-  background-repeat: no-repeat;
-
-  animation:
-    glowline-sweep 12.8s linear infinite,
-    glowline-flicker 0.18s infinite;
-}
-
-@keyframes glowline-sweep {
-  0%   { background-position: 0 -48px; }
-  100% { background-position: 0 100%; }
-}
-
-@keyframes glowline-flicker {
-  0%,100% { opacity: 0.22; }
-  50%     { opacity: 0.30; }
-}
-
-/* Color separation */
-.crt-colorsep * {
-  animation: colorsep 1.6s infinite;
-}
-@keyframes colorsep {
-  0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
-  50%     { text-shadow: 0px 0px 3px #0f0; }
-}
-
-/* Cursor blink */
-.blink::after {
-  content: "";
-  display: inline-block;
-  width: 8px;
-  height: 16px;
-  background: #0f0;
-  margin-left: 4px;
-  vertical-align: bottom;
-  animation: cursor-blink 1s steps(2) infinite;
-}
-@keyframes cursor-blink {
-  0%,50% { opacity: 1; }
-  51%,100% { opacity: 0; }
-}
-
-/* Blog posts */
-.post {
-  margin: 0 auto 3rem auto;
-}
-.post-title {
-  font-size: 1.8rem;
-  margin-bottom: 1.5rem;
-}
-.post p {
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-.post ul,
-.post ol {
-  margin-left: 1.5rem;
-  margin-bottom: 1rem;
-}
-.post li {
-  line-height: 1.5;
-}
-.post h2 {
-  font-size: 1.3rem;
-  margin-top: 2rem;
-  margin-bottom: 0.75rem;
-}
-.post h3 {
-  font-size: 1.1rem;
-  margin-top: 1.5rem;
-  margin-bottom: 0.5rem;
-}
-.post img {
-  max-width: 50%;
-  height: auto;
-  display: block;
-  margin: 1.5rem auto;
-}
-
-/* Side-by-side images */
-.image-row {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin: 1.5rem 0;
-}
-.image-row img {
-  max-width: 48%;
-  height: auto;
-  display: block;
-  margin: 0;
-}
-.image-row.image-row-3 img {
-  max-width: 32%;
-}
-
-/* MOBILE HEADER FIX */
-@media (max-width: 720px) {
-  header {
-    flex-direction: column;
-    align-items: flex-start;
-    padding: 1rem;
-  }
-
-  header h1 {
-    font-size: 1.1rem;
-  }
-
-  .nav-links {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .nav-links a {
-    font-size: 0.8rem;
-  }
-
-  .nav-links .btn {
-    padding: 0.25rem 0.5rem;
-  }
-}
-
-/* Mobile image rows */
-@media (max-width: 600px) {
-  .image-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .image-row img {
-    max-width: 100%;
-  }
-}
-
 /* ===========================
    AlphaTab / Tabs page styles
    =========================== */
 
 .tabs-page {
-  /* wider, auto-expanding container for the tabs page */
-  width: min(90vw, 1600px);
+  max-width: 1200px; /* wider tab area */
   margin: 0 auto;
-  padding: 2rem 1rem;
-  box-sizing: border-box;
+  padding: 2rem 0;
 }
 
 /* Search + sort controls */
@@ -376,12 +34,18 @@ body::after {
   margin-top: 0;
 }
 
+/* Tab list container: limit height, make it scroll */
+#tab-list {
+  max-height: 260px;       /* roughly ~10 rows */
+  overflow-y: auto;
+  border: 1px solid rgba(0, 255, 0, 0.3);
+}
+
 /* Tab list */
 .tab-list-ul {
   list-style: none;
   padding: 0;
   margin: 0;
-  border: 1px solid rgba(0, 255, 0, 0.3);
 }
 
 .tab-list-item {
@@ -456,7 +120,7 @@ body::after {
 
 /* Track sidebar */
 .at-sidebar {
-  width: 170px;
+  width: 190px;
   border: 1px solid rgba(0, 255, 0, 0.4);
   padding: 0.5rem;
   box-sizing: border-box;
@@ -475,17 +139,26 @@ body::after {
   opacity: 0.8;
 }
 
+.at-track-list {
+  margin-top: 0.25rem;
+}
+
+/* Track rows */
 .at-track-row {
   display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.2rem 0.3rem;
-  margin-bottom: 0.15rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem 0.3rem;
+  margin-bottom: 0.25rem;
   cursor: pointer;
-  border-radius: 2px;
+  border-radius: 3px;
+  background: transparent;
 }
 
 .at-track-row-all {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
   border-bottom: 1px dashed rgba(0, 255, 0, 0.4);
   padding-bottom: 0.3rem;
@@ -500,15 +173,86 @@ body::after {
   color: #000;
 }
 
-.at-track-icon {
-  font-size: 0.8rem;
-}
-
 .at-track-name {
   font-size: 0.8rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Controls inside each track row, hidden until row is "open" */
+.at-track-controls {
+  display: none;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.7rem;
+}
+
+.at-track-row.open .at-track-controls {
+  display: flex;
+}
+
+.at-track-btn {
+  background: #000;
+  border: 1px solid #0f0;
+  color: #0f0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.6rem;
+  padding: 0.1rem 0.3rem;
+  cursor: pointer;
+}
+
+.at-track-btn:hover {
+  background: #0f0;
+  color: #000;
+}
+
+.at-track-vol-label {
+  font-size: 0.6rem;
+}
+
+/* Volume slider CRT styling */
+.at-sidebar input[type="range"].at-track-volume {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  background: rgba(0, 255, 0, 0.2);
+  outline: none;
+  border-radius: 2px;
+}
+
+/* track */
+.at-sidebar input[type="range"].at-track-volume::-webkit-slider-runnable-track {
+  height: 4px;
+  background: rgba(0, 255, 0, 0.5);
+  border-radius: 2px;
+}
+.at-sidebar input[type="range"].at-track-volume::-moz-range-track {
+  height: 4px;
+  background: rgba(0, 255, 0, 0.5);
+  border-radius: 2px;
+}
+
+/* thumb */
+.at-sidebar input[type="range"].at-track-volume::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0f0;
+  border: 1px solid #000;
+  box-shadow: 0 0 4px rgba(0, 255, 0, 0.8);
+  margin-top: -3px;
+}
+.at-sidebar input[type="range"].at-track-volume::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #0f0;
+  border: 1px solid #000;
+  box-shadow: 0 0 4px rgba(0, 255, 0, 0.8);
 }
 
 /* Main viewer column */
@@ -517,7 +261,7 @@ body::after {
   min-width: 0;
 }
 
-/* Top row with layout select + player controls */
+/* Top row with layout + player controls + speed */
 .tab-controls-row {
   display: flex;
   flex-wrap: wrap;
@@ -526,12 +270,9 @@ body::after {
   margin-bottom: 0.75rem;
 }
 
-.tab-layout-select label {
-  margin-right: 0.5rem;
-}
-
-/* Player controls */
-.tab-player-controls button {
+.tab-player-controls button,
+.tab-layout-select select,
+.tab-speed-select select {
   background: #000;
   color: #0f0;
   border: 1px solid #0f0;
@@ -539,7 +280,6 @@ body::after {
   font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
-  margin-right: 0.5rem;
 }
 
 .tab-player-controls button:hover {
@@ -547,10 +287,13 @@ body::after {
   color: #000;
 }
 
+.tab-layout-select label,
+.tab-speed-select label {
+  margin-right: 0.3rem;
+}
+
 /* AlphaTab viewer container */
 .at-wrap {
-  width: 100%;
-  box-sizing: border-box;
   overflow-x: auto;
   border: 1px solid rgba(0, 255, 0, 0.4);
   padding: 0.5rem;
@@ -562,7 +305,7 @@ body::after {
   min-height: 200px;
 }
 
-/* Keep notation from overflowing awkwardly */
+/* Make notation fill the available width */
 .at-main svg {
   max-width: 100%;
 }
@@ -607,7 +350,7 @@ body::after {
   }
 }
 
-/* AlphaTab text readability: green notes, dark staff */
+/* AlphaTab text readability: green notes, dark-ish staff */
 .at-main text {
   fill: #0f0 !important;
   stroke: #0f0 !important;
@@ -616,13 +359,12 @@ body::after {
   text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
 }
 
-/* Optional: darken staff lines slightly without blasting them out */
 .at-main line,
 .at-main path {
   stroke: rgba(0, 255, 0, 0.7);
 }
 
-/* Make the built-in play cursor a CRT-ish bar without completely hiding numbers */
+/* CRT-ish play cursor without completely hiding numbers */
 #alphaTab .at-cursor-bar {
   background: rgba(0, 255, 0, 0.12);
 }
