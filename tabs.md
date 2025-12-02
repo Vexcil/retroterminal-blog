@@ -6,7 +6,6 @@ noindex: true
 ---
 
 <div class="tabs-page">
-  <!-- Search / sort -->
   <div class="tabs-controls">
     <input type="text" id="tab-search" placeholder="Search by title..." />
     <select id="tab-sort">
@@ -15,7 +14,6 @@ noindex: true
     </select>
   </div>
 
-  <!-- Scroll-limited tab list -->
   <div id="tab-list"></div>
 
   <div class="tabs-pagination">
@@ -30,43 +28,43 @@ noindex: true
 
   <p id="current-tab-title"></p>
 
-  <div class="tabs-viewer-shell">
-    <!-- LEFT: track sidebar -->
-    <aside class="at-sidebar" id="track-sidebar">
-      <div class="at-sidebar-title">Tracks</div>
-      <div class="at-sidebar-empty">Load a tab to see tracks.</div>
-      <div class="at-track-list" id="track-list"></div>
-    </aside>
+  <div class="tabs-viewer-shell" id="tabs-viewer-shell">
+    <!-- Track sidebar (collapsed by default) -->
+    <div class="at-sidebar collapsed" id="track-sidebar">
+      <div class="at-sidebar-toggle" id="track-sidebar-toggle">
+        TRACKS
+      </div>
+      <div class="at-sidebar-inner">
+        <div class="at-sidebar-title">Tracks</div>
+        <div class="at-track-row at-track-row-all" data-track-index="all">
+          <span class="at-track-name">All tracks</span>
+        </div>
+        <div id="track-list"></div>
+      </div>
+    </div>
 
-    <!-- RIGHT: controls + main viewer -->
+    <!-- Main viewer column -->
     <div class="tabs-viewer-main">
       <div class="tab-controls-row">
         <div class="tab-player-controls">
-          <!-- Play toggles play/pause, Stop resets to start -->
-          <button id="tab-play">Play / Pause</button>
+          <button id="tab-play">Play</button>
           <button id="tab-stop">Stop</button>
-        </div>
 
-        <div class="tab-speed-select">
-          <label for="speed-select">Speed:</label>
-          <select id="speed-select">
-            <option value="0.25">0.25×</option>
-            <option value="0.5">0.5×</option>
-            <option value="0.75">0.75×</option>
-            <option value="0.9">0.9×</option>
-            <option value="1" selected>1×</option>
-            <option value="1.25">1.25×</option>
-            <option value="1.5">1.5×</option>
-            <option value="2">2×</option>
-          </select>
-        </div>
+          <label for="tab-speed" class="tab-speed-label">
+            Speed:
+            <select id="tab-speed">
+              <option value="0.5">0.5x</option>
+              <option value="0.75">0.75x</option>
+              <option value="0.9">0.9x</option>
+              <option value="1" selected>1x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2x</option>
+            </select>
+          </label>
 
-        <div class="tab-layout-select">
-          <label for="layout-select">Layout:</label>
-          <select id="layout-select">
-            <option value="page" selected>Pages</option>
-            <option value="horizontal">Scroll</option>
-          </select>
+          <button id="tab-print">Print</button>
+          <button id="tab-download">Download</button>
         </div>
       </div>
 
@@ -82,35 +80,35 @@ noindex: true
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
 <script>
 (function() {
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 10; // show ~10 per page, rest via pagination
 
   let allTabs = [];
   let filteredTabs = [];
   let currentPage = 1;
 
-  const searchInput     = document.getElementById('tab-search');
-  const sortSelect      = document.getElementById('tab-sort');
-  const listEl          = document.getElementById('tab-list');
-  const pageInfoEl      = document.getElementById('tab-page-info');
-  const prevBtn         = document.getElementById('tab-prev');
-  const nextBtn         = document.getElementById('tab-next');
-  const currentTitleEl  = document.getElementById('current-tab-title');
-  const viewerContainer = document.getElementById('alphaTab');
-  const playBtn         = document.getElementById('tab-play');
-  const stopBtn         = document.getElementById('tab-stop');
-  const layoutSelect    = document.getElementById('layout-select');
-  const speedSelect     = document.getElementById('speed-select');
-  const trackSidebar    = document.getElementById('track-sidebar');
-  const trackListEl     = document.getElementById('track-list');
+  const searchInput      = document.getElementById('tab-search');
+  const sortSelect       = document.getElementById('tab-sort');
+  const listEl           = document.getElementById('tab-list');
+  const pageInfoEl       = document.getElementById('tab-page-info');
+  const prevBtn          = document.getElementById('tab-prev');
+  const nextBtn          = document.getElementById('tab-next');
+  const currentTitleEl   = document.getElementById('current-tab-title');
+  const viewerContainer  = document.getElementById('alphaTab');
+
+  const playBtn          = document.getElementById('tab-play');
+  const stopBtn          = document.getElementById('tab-stop');
+  const speedSelect      = document.getElementById('tab-speed');
+  const printBtn         = document.getElementById('tab-print');
+  const downloadBtn      = document.getElementById('tab-download');
+
+  const trackSidebar     = document.getElementById('track-sidebar');
+  const trackSidebarToggle = document.getElementById('track-sidebar-toggle');
+  const trackListEl      = document.getElementById('track-list');
+  const trackAllRow      = document.querySelector('.at-track-row-all');
 
   let alphaApi       = null;
   let currentScore   = null;
-  let currentLayout  = 'page';  // 'page' or 'horizontal'
   let currentTabItem = null;
-
-  /* =====================
-     Index + list rendering
-     ===================== */
 
   function loadIndex() {
     fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
@@ -191,143 +189,151 @@ noindex: true
     nextBtn.disabled = currentPage >= maxPage;
   }
 
-  /* ================
-     Track side panel
-     ================ */
-
-  function clearTrackSidebar() {
+  function clearTracks() {
     if (!trackListEl) return;
     trackListEl.innerHTML = "";
-    const empty = trackSidebar.querySelector(".at-sidebar-empty");
-    if (empty) empty.style.display = "block";
+    if (trackAllRow) {
+      trackAllRow.classList.remove("active");
+    }
   }
 
   function populateTracks(score) {
-    if (!trackListEl || !score || !score.tracks) return;
+    if (!score || !score.tracks || !trackListEl) return;
 
-    trackListEl.innerHTML = "";
-    const empty = trackSidebar.querySelector(".at-sidebar-empty");
-    if (empty) empty.style.display = "none";
+    clearTracks();
 
-    // "All tracks" row
-    const allRow = document.createElement("div");
-    allRow.className = "at-track-row at-track-row-all active";
-    allRow.textContent = "All tracks";
-    allRow.dataset.trackIndex = "all";
-    allRow.addEventListener("click", function() {
-      setActiveTrackRow(allRow);
-      if (!alphaApi || !currentScore) return;
-      alphaApi.renderScore(currentScore);
-    });
-    trackListEl.appendChild(allRow);
-
-    // One row per track, collapsed by default
     score.tracks.forEach(track => {
       const row = document.createElement("div");
       row.className = "at-track-row";
       row.dataset.trackIndex = String(track.index);
 
+      const header = document.createElement("div");
+      header.className = "at-track-header";
+
       const nameSpan = document.createElement("span");
       nameSpan.className = "at-track-name";
       nameSpan.textContent = track.name || ("Track " + (track.index + 1));
 
-      // controls wrapper (hidden until row "opened")
-      const controls = document.createElement("div");
-      controls.className = "at-track-controls";
+      const buttonsDiv = document.createElement("div");
+      buttonsDiv.className = "at-track-buttons";
 
       const muteBtn = document.createElement("button");
       muteBtn.type = "button";
-      muteBtn.textContent = "Mute";
-      muteBtn.className = "at-track-btn at-track-btn-mute";
+      muteBtn.className = "track-mute";
+      muteBtn.textContent = "M";
 
       const soloBtn = document.createElement("button");
       soloBtn.type = "button";
-      soloBtn.textContent = "Solo";
-      soloBtn.className = "at-track-btn at-track-btn-solo";
+      soloBtn.className = "track-solo";
+      soloBtn.textContent = "S";
 
-      const volLabel = document.createElement("span");
-      volLabel.className = "at-track-vol-label";
-      volLabel.textContent = "Vol";
+      buttonsDiv.appendChild(muteBtn);
+      buttonsDiv.appendChild(soloBtn);
+
+      header.appendChild(nameSpan);
+      header.appendChild(buttonsDiv);
+
+      const volWrap = document.createElement("div");
+      volWrap.className = "at-track-volume";
 
       const volSlider = document.createElement("input");
       volSlider.type = "range";
       volSlider.min = "0";
-      volSlider.max = "1";
-      volSlider.step = "0.05";
-      volSlider.value = "1";
-      volSlider.className = "at-track-volume";
+      volSlider.max = "16";
+      volSlider.value = "12";
 
-      // clicking the row itself toggles "open" and selects the track
+      volWrap.appendChild(volSlider);
+
+      row.appendChild(header);
+      row.appendChild(volWrap);
+      trackListEl.appendChild(row);
+
+      // Track selection on row click (excluding buttons/slider)
       row.addEventListener("click", function(e) {
-        // ignore clicks on buttons/slider so their handlers work
-        if (e.target.closest(".at-track-controls")) return;
+        if ((e.target && e.target.closest(".track-mute")) ||
+            (e.target && e.target.closest(".track-solo")) ||
+            (e.target && e.target.closest(".at-track-volume"))) {
+          return;
+        }
+
+        if (!alphaApi || !currentScore) return;
 
         const idx = track.index;
-        setActiveTrackRow(row);
-        if (!alphaApi || !currentScore) return;
-        const t = currentScore.tracks.find(t => t.index === idx);
-        if (t) alphaApi.renderTracks([t]);
-        row.classList.toggle("open");
+        const selectedTrack = currentScore.tracks.find(t => t.index === idx);
+        if (!selectedTrack) return;
+
+        document
+          .querySelectorAll(".at-track-row")
+          .forEach(el => el.classList.remove("active"));
+        row.classList.add("active");
+
+        if (trackAllRow) {
+          trackAllRow.classList.remove("active");
+        }
+
+        alphaApi.renderTracks([selectedTrack]);
       });
 
-      // Mute / Solo / Volume hooks
+      // Mute toggle
       muteBtn.addEventListener("click", function(e) {
         e.stopPropagation();
-        // TODO: wire to AlphaTab per-track mute API
-        // Example placeholder:
-        // alphaApi.setTrackMute(track.index, !isMuted);
-        console.log("Mute track", track.index);
+        if (!alphaApi) return;
+        const isMuted = muteBtn.classList.toggle("on");
+        try {
+          if (typeof alphaApi.setTrackMute === "function") {
+            alphaApi.setTrackMute(track.index, isMuted);
+          }
+        } catch (err) {
+          console.warn("Track mute unsupported:", err);
+        }
       });
 
+      // Solo toggle
       soloBtn.addEventListener("click", function(e) {
         e.stopPropagation();
-        // TODO: wire to AlphaTab per-track solo API
-        // Example placeholder:
-        // alphaApi.setTrackSolo(track.index, !isSolo);
-        console.log("Solo track", track.index);
+        if (!alphaApi || !currentScore) return;
+
+        const isSolo = soloBtn.classList.toggle("on");
+
+        try {
+          if (typeof alphaApi.setTrackSolo === "function") {
+            currentScore.tracks.forEach(t => {
+              alphaApi.setTrackSolo(t.index, false);
+            });
+            if (isSolo) {
+              alphaApi.setTrackSolo(track.index, true);
+            }
+          }
+        } catch (err) {
+          console.warn("Track solo unsupported:", err);
+        }
       });
 
+      // Volume slider
       volSlider.addEventListener("input", function(e) {
-        e.stopPropagation();
-        const val = parseFloat(volSlider.value);
-        // TODO: wire to AlphaTab per-track volume API
-        // Example placeholder:
-        // alphaApi.setTrackVolume(track.index, val);
-        console.log("Volume track", track.index, val);
+        if (!alphaApi) return;
+        const v = parseInt(e.target.value, 10);
+        if (isNaN(v)) return;
+        try {
+          if (typeof alphaApi.setTrackVolume === "function") {
+            alphaApi.setTrackVolume(track.index, v);
+          }
+        } catch (err) {
+          console.warn("Track volume unsupported:", err);
+        }
       });
-
-      controls.appendChild(muteBtn);
-      controls.appendChild(soloBtn);
-      controls.appendChild(volLabel);
-      controls.appendChild(volSlider);
-
-      row.appendChild(nameSpan);
-      row.appendChild(controls);
-      trackListEl.appendChild(row);
     });
   }
-
-  function setActiveTrackRow(row) {
-    if (!row) return;
-    const rows = trackListEl.querySelectorAll(".at-track-row");
-    rows.forEach(r => r.classList.remove("active"));
-    row.classList.add("active");
-  }
-
-  /* ======================
-     AlphaTab initialization
-     ====================== */
 
   function createAlphaTab(item) {
     viewerContainer.innerHTML = "";
     currentScore = null;
-    clearTrackSidebar();
 
     const settings = {
       file: item.file,
       display: {
         staveProfile: "tab",
-        layoutMode: currentLayout === "page" ? "page" : "horizontal"
+        layoutMode: "page" // default to vertical page layout
       },
       player: {
         enablePlayer: true,
@@ -341,8 +347,18 @@ noindex: true
     alphaApi.scoreLoaded.on(function(score) {
       currentScore = score;
       populateTracks(score);
-      // reset playback speed UI
-      if (speedSelect) speedSelect.value = "1";
+
+      // Reset speed on new score
+      if (speedSelect && speedSelect.value) {
+        const s = parseFloat(speedSelect.value);
+        if (!isNaN(s)) {
+          try {
+            alphaApi.playbackSpeed = s;
+          } catch (err) {
+            console.warn("Playback speed set unsupported:", err);
+          }
+        }
+      }
     });
   }
 
@@ -352,11 +368,100 @@ noindex: true
     createAlphaTab(item);
   }
 
-  /* =====================
-     Controls / interactions
-     ===================== */
+  // Sidebar toggle (collapsed by default)
+  if (trackSidebar && trackSidebarToggle) {
+    trackSidebarToggle.addEventListener("click", function() {
+      const collapsed = trackSidebar.classList.toggle("collapsed");
+      trackSidebarToggle.textContent = collapsed ? "TRACKS" : "TRACKS ◂";
+    });
+  }
 
-  // Search/sort
+  // "All tracks" selector
+  if (trackAllRow) {
+    trackAllRow.addEventListener("click", function() {
+      if (!alphaApi || !currentScore) return;
+
+      document
+        .querySelectorAll(".at-track-row")
+        .forEach(el => el.classList.remove("active"));
+
+      trackAllRow.classList.add("active");
+      alphaApi.renderScore(currentScore);
+    });
+  }
+
+  // Playback controls
+  if (playBtn) {
+    playBtn.addEventListener("click", function() {
+      if (!alphaApi) return;
+      try {
+        alphaApi.playPause();
+      } catch (err) {
+        console.warn("playPause unsupported:", err);
+      }
+    });
+  }
+
+  if (stopBtn) {
+    stopBtn.addEventListener("click", function() {
+      if (!alphaApi) return;
+      try {
+        alphaApi.stop();
+      } catch (err) {
+        console.warn("stop unsupported:", err);
+      }
+    });
+  }
+
+  // Playback speed
+  if (speedSelect) {
+    speedSelect.addEventListener("change", function() {
+      if (!alphaApi) return;
+      const s = parseFloat(speedSelect.value);
+      if (isNaN(s)) return;
+      try {
+        alphaApi.playbackSpeed = s;
+      } catch (err) {
+        console.warn("Playback speed set unsupported:", err);
+      }
+    });
+  }
+
+  // Print current tab: open a simple print window with rendered SVG
+  if (printBtn) {
+    printBtn.addEventListener("click", function() {
+      if (!viewerContainer || !viewerContainer.innerHTML) return;
+
+      const w = window.open("", "_blank");
+      if (!w) return;
+
+      w.document.write("<html><head><title>" +
+        (currentTitleEl.textContent || "Tab") +
+        "</title>");
+      w.document.write("<style>body{margin:0;padding:0;background:#fff;color:#000;font-family:sans-serif;}svg{width:100%;height:auto;}</style>");
+      w.document.write("</head><body>");
+      w.document.write(viewerContainer.innerHTML);
+      w.document.write("</body></html>");
+      w.document.close();
+      w.focus();
+      w.print();
+    });
+  }
+
+  // Download current tab file
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", function() {
+      if (!currentTabItem || !currentTabItem.file) return;
+      const a = document.createElement("a");
+      a.href = currentTabItem.file;
+      a.download = (currentTabItem.title || "tab");
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    });
+  }
+
+  // Search / sort / paginate wiring
   searchInput.addEventListener("input", function() {
     currentPage = 1;
     applyFiltersAndRender();
@@ -381,46 +486,6 @@ noindex: true
       renderPage();
     }
   });
-
-  // Layout: pages vs scroll
-  if (layoutSelect) {
-    layoutSelect.addEventListener("change", function() {
-      currentLayout = layoutSelect.value === "horizontal" ? "horizontal" : "page";
-      if (currentTabItem) {
-        createAlphaTab(currentTabItem);
-      }
-    });
-  }
-
-  // Playback:
-  // Play button toggles play/pause, so "pause without reset" is built in.
-  if (playBtn) {
-    playBtn.addEventListener("click", function() {
-      if (!alphaApi) return;
-      alphaApi.playPause();
-    });
-  }
-
-  if (stopBtn) {
-    stopBtn.addEventListener("click", function() {
-      if (!alphaApi) return;
-      alphaApi.stop();
-    });
-  }
-
-  // Playback speed dropdown
-  if (speedSelect) {
-    speedSelect.addEventListener("change", function() {
-      if (!alphaApi) return;
-      const val = parseFloat(speedSelect.value);
-      if (!isNaN(val)) {
-        // This assumes AlphaTab exposes playbackSpeed on the api.
-        // If this line throws, swap it for the correct API from the docs
-        // (e.g. alphaApi.setPlaybackSpeed(val)).
-        alphaApi.playbackSpeed = val;
-      }
-    });
-  }
 
   document.addEventListener("DOMContentLoaded", loadIndex);
 })();
