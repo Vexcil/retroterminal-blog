@@ -1,9 +1,349 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: #000; /* solid black everywhere */
+}
+
+/* Base body styling */
+body {
+  color: #0f0;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Screen wrapper so background and footer run full height */
+#screen {
+  position: relative;
+  min-height: 100vh;
+}
+
+/* Main content grows to push footer down */
+.main-content {
+  padding: 2rem;
+}
+
+/* Links */
+a {
+  color: #0f0;
+  text-decoration: none;
+}
+a:hover {
+  color: #0c6;
+}
+
+/* Header and footer */
+header {
+  background: #000;
+  padding: 1rem 2rem;
+  border-bottom: 1px solid #0f0;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  box-sizing: border-box;
+}
+
+header h1 {
+  margin: 0;
+}
+
+/* Navigation */
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+}
+
+/* Generic nav button style */
+.nav-links .btn {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #0f0;
+}
+
+/* Footer */
+footer {
+  background: #000;
+  padding: 1rem 2rem;
+  border-top: 1px solid #0f0;
+  margin-top: 2rem;
+  text-align: center;
+}
+.social-icons a {
+  margin: 0 0.5rem;
+  font-size: 1rem;
+}
+
+/* Hero sections on home */
+.hero {
+  text-align: center;
+  padding: 4rem 2rem;
+  padding-top: 1rem;
+  border-bottom: 1px dashed #0f0;
+}
+.hero .btn {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  border: 2px solid #0f0;
+  color: #0f0;
+  cursor: pointer;
+}
+.hero .btn:hover {
+  background: #0f0;
+  color: #000;
+}
+
+/* Services */
+.services {
+  padding: 2rem;
+  border-bottom: 1px dashed #0f0;
+}
+.service-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.card {
+  background: #000;
+  border: 1px solid #0f0;
+  padding: 1rem;
+  width: 200px;
+}
+
+/* Contact form */
+.contact {
+  padding: 2rem;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  max-width: 400px;
+  margin: auto;
+  gap: 1rem;
+}
+input,
+textarea,
+button {
+  background: #000;
+  border: 1px solid #0f0;
+  color: #0f0;
+  padding: 0.5rem;
+  font-family: 'Press Start 2P', monospace;
+}
+button {
+  cursor: pointer;
+}
+button:hover {
+  background: #0f0;
+  color: #000;
+}
+select,
+option {
+  font-family: 'Press Start 2P', monospace;
+  background-color: #000;
+  color: #0f0;
+  border: 2px solid #0f0;
+  padding: 5px;
+  margin-top: 10px;
+  width: 200px;
+  appearance: none;
+}
+select:focus {
+  outline: none;
+  border-color: #0f0;
+  box-shadow: 0 0 8px #0f0;
+}
+
+/* CRT container */
+.crt {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* INVERTED STATIC SCANLINES */
+.crt::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+
+  background:
+    linear-gradient(rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 50%),
+    linear-gradient(90deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02));
+
+  background-size: 100% 2px, 3px 100%;
+  pointer-events: none;
+}
+
+/* VIEWPORT-FIXED GLOWLINE */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  z-index: 2;
+
+  background-image: linear-gradient(
+    to bottom,
+    rgba(0,255,0,0.0) 0px,
+    rgba(0,255,0,0.0) 6px,
+    rgba(0,255,0,0.25) 8px,
+    rgba(0,255,0,0.12) 30px,
+    rgba(0,255,0,0.04) 44px,
+    rgba(0,255,0,0.0) 48px
+  );
+
+  background-size: 100% 48px;
+  background-repeat: no-repeat;
+
+  animation:
+    glowline-sweep 12.8s linear infinite,
+    glowline-flicker 0.18s infinite;
+}
+
+@keyframes glowline-sweep {
+  0%   { background-position: 0 -48px; }
+  100% { background-position: 0 100%; }
+}
+
+@keyframes glowline-flicker {
+  0%,100% { opacity: 0.22; }
+  50%     { opacity: 0.30; }
+}
+
+/* Color separation */
+.crt-colorsep * {
+  animation: colorsep 1.6s infinite;
+}
+@keyframes colorsep {
+  0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
+  50%     { text-shadow: 0px 0px 3px #0f0; }
+}
+
+/* Cursor blink */
+.blink::after {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 16px;
+  background: #0f0;
+  margin-left: 4px;
+  vertical-align: bottom;
+  animation: cursor-blink 1s steps(2) infinite;
+}
+@keyframes cursor-blink {
+  0%,50% { opacity: 1; }
+  51%,100% { opacity: 0; }
+}
+
+/* Blog posts */
+.post {
+  margin: 0 auto 3rem auto;
+}
+.post-title {
+  font-size: 1.8rem;
+  margin-bottom: 1.5rem;
+}
+.post p {
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+.post ul,
+.post ol {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+.post li {
+  line-height: 1.5;
+}
+.post h2 {
+  font-size: 1.3rem;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.post h3 {
+  font-size: 1.1rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+.post img {
+  max-width: 50%;
+  height: auto;
+  display: block;
+  margin: 1.5rem auto;
+}
+
+/* Side-by-side images */
+.image-row {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin: 1.5rem 0;
+}
+.image-row img {
+  max-width: 48%;
+  height: auto;
+  display: block;
+  margin: 0;
+}
+.image-row.image-row-3 img {
+  max-width: 32%;
+}
+
+/* MOBILE HEADER FIX */
+@media (max-width: 720px) {
+  header {
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  header h1 {
+    font-size: 1.1rem;
+  }
+
+  .nav-links {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .nav-links a {
+    font-size: 0.8rem;
+  }
+
+  .nav-links .btn {
+    padding: 0.25rem 0.5rem;
+  }
+}
+
+/* Mobile image rows */
+@media (max-width: 600px) {
+  .image-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .image-row img {
+    max-width: 100%;
+  }
+}
+
 /* ===========================
    AlphaTab / Tabs page styles
    =========================== */
 
 .tabs-page {
-  max-width: 1200px; /* wider tab area */
+  max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 0;
 }
