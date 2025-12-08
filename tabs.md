@@ -80,31 +80,32 @@ noindex: true
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
 <script>
 (function() {
-  const PAGE_SIZE = 10; // show ~10 per page, rest via pagination
+  // show ~30 per page, rest via pagination
+  const PAGE_SIZE = 30;
 
   let allTabs = [];
   let filteredTabs = [];
   let currentPage = 1;
 
-  const searchInput      = document.getElementById('tab-search');
-  const sortSelect       = document.getElementById('tab-sort');
-  const listEl           = document.getElementById('tab-list');
-  const pageInfoEl       = document.getElementById('tab-page-info');
-  const prevBtn          = document.getElementById('tab-prev');
-  const nextBtn          = document.getElementById('tab-next');
-  const currentTitleEl   = document.getElementById('current-tab-title');
-  const viewerContainer  = document.getElementById('alphaTab');
+  const searchInput        = document.getElementById('tab-search');
+  const sortSelect         = document.getElementById('tab-sort');
+  const listEl             = document.getElementById('tab-list');
+  const pageInfoEl         = document.getElementById('tab-page-info');
+  const prevBtn            = document.getElementById('tab-prev');
+  const nextBtn            = document.getElementById('tab-next');
+  const currentTitleEl     = document.getElementById('current-tab-title');
+  const viewerContainer    = document.getElementById('alphaTab');
 
-  const playBtn          = document.getElementById('tab-play');
-  const stopBtn          = document.getElementById('tab-stop');
-  const speedSelect      = document.getElementById('tab-speed');
-  const printBtn         = document.getElementById('tab-print');
-  const downloadBtn      = document.getElementById('tab-download');
+  const playBtn            = document.getElementById('tab-play');
+  const stopBtn            = document.getElementById('tab-stop');
+  const speedSelect        = document.getElementById('tab-speed');
+  const printBtn           = document.getElementById('tab-print');
+  const downloadBtn        = document.getElementById('tab-download');
 
-  const trackSidebar     = document.getElementById('track-sidebar');
+  const trackSidebar       = document.getElementById('track-sidebar');
   const trackSidebarToggle = document.getElementById('track-sidebar-toggle');
-  const trackListEl      = document.getElementById('track-list');
-  const trackAllRow      = document.querySelector('.at-track-row-all');
+  const trackListEl        = document.getElementById('track-list');
+  const trackAllRow        = document.querySelector('.at-track-row-all');
 
   let alphaApi       = null;
   let currentScore   = null;
@@ -329,16 +330,21 @@ noindex: true
     viewerContainer.innerHTML = "";
     currentScore = null;
 
+    const viewportEl = document.querySelector(".at-viewport");
+
     const settings = {
       file: item.file,
       display: {
         staveProfile: "tab",
-        layoutMode: "page" // default to vertical page layout
+        layoutMode: "page",        // default to vertical page layout
+        autoScroll: true,          // follow playback
+        autoScrollSmooth: true,    // smooth scrolling
+        autoScrollOffset: 0.3      // keep cursor ~30% from top
       },
       player: {
         enablePlayer: true,
         soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
-        scrollElement: document.querySelector(".at-viewport")
+        scrollElement: viewportEl  // scroll the viewport, not the whole window
       }
     };
 
