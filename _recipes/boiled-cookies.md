@@ -1,7 +1,8 @@
 ---
-title: "Family No-Bake Chocolate Oat Bars"
+layout: default
+title: "Family No-Bake Chocolate Oat Bars (Boiled Cookies)"
 category: "Desserts"
-tags: ["no-bake", "chocolate", "oats", "family recipe"]
+tags: ["no-bake", "chocolate", "oats", "family recipe", "boiled cookies"]
 ---
 
 A pan-set variant of classic no-bake chocolate cookies. Dense, sliceable, and meant to be cut into bars instead of dropped as cookies.
@@ -56,4 +57,4 @@ A pan-set variant of classic no-bake chocolate cookies. Dense, sliceable, and me
 
 ---
 
-Old-school, deliberate, and unforgiving if rushed. Time it right and it locks in perfectly.
+Old-school, deliberate, and unforgiving if rushed. Time it right and it locks in perfectly. We've always referred to them as Boiled Cookies growing up. They make for a tasty treat but could also be used to put on some weight. Future snack of sumos?

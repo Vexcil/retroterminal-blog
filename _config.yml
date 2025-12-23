@@ -2,15 +2,15 @@ title: RetroTerminal
 description: CRT-styled blog
 url: https://retroterminal.net
 
-permalink: pretty     # /page/ instead of /page.html
+permalink: pretty
 markdown: kramdown
 
 collections:
   recipes:
-    output: true      # build pages for each recipe
+    output: true
+    permalink: /recipes/:name/
   posts:
     output: true
-
 
 defaults:
   - scope:
@@ -18,3 +18,9 @@ defaults:
       type: "posts"
     values:
       permalink: /posts/:title/
+
+  - scope:
+      path: ""
+      type: "recipes"
+    values:
+      layout: default

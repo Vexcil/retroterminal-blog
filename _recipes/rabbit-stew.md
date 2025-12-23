@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Rabbit Stew
+title: Rabbit Stew (demo)
 date: 2025-09-11
 ---
 
