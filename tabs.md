@@ -27,6 +27,11 @@ noindex: true
   <h2>Viewer</h2>
 
   <p id="current-tab-title"></p>
+  <p class="tab-song-info">
+    <span id="tab-song-title"></span>
+    <span class="tab-song-sep">-</span>
+    <span id="tab-song-artist"></span>
+  </p>
 
   <div class="tabs-viewer-shell" id="tabs-viewer-shell">
     <!-- Track sidebar (collapsed by default) -->
@@ -47,9 +52,12 @@ noindex: true
     <div class="tabs-viewer-main">
       <div class="tab-controls-row">
         <div class="tab-player-controls">
-          <button id="tab-play">Play</button>
-          <button id="tab-stop">Stop</button>
-
+          <button id="tab-play" disabled>Play</button>
+          <button id="tab-stop" disabled>Stop</button>
+          <span id="tab-player-progress" class="tab-player-progress">0%</span>
+          <span id="tab-song-position" class="tab-song-position">00:00 / 00:00</span>
+        </div>
+        <div class="tab-player-controls">
           <label for="tab-speed" class="tab-speed-label">
             Speed:
             <select id="tab-speed">
@@ -63,8 +71,71 @@ noindex: true
             </select>
           </label>
 
+          <label for="tab-master-volume" class="tab-speed-label">
+            Master:
+            <input id="tab-master-volume" type="range" min="0" max="100" value="100" />
+          </label>
+        </div>
+      </div>
+
+      <div class="tab-controls-row tab-controls-row-secondary">
+        <div class="tab-player-controls">
+          <button id="tab-count-in" class="tab-toggle" type="button">Count-in</button>
+          <button id="tab-metronome" class="tab-toggle" type="button">Metronome</button>
+          <button id="tab-loop" class="tab-toggle" type="button">Loop</button>
+
           <button id="tab-print">Print</button>
           <button id="tab-download">Download</button>
+          <button id="tab-download-midi">Download MIDI</button>
+        </div>
+        <div class="tab-player-controls">
+          <label for="tab-zoom" class="tab-speed-label">
+            Zoom:
+            <select id="tab-zoom">
+              <option value="50">50%</option>
+              <option value="75">75%</option>
+              <option value="90">90%</option>
+              <option value="100" selected>100%</option>
+              <option value="110">110%</option>
+              <option value="125">125%</option>
+              <option value="150">150%</option>
+              <option value="200">200%</option>
+            </select>
+          </label>
+
+          <label for="tab-layout" class="tab-speed-label">
+            Layout:
+            <select id="tab-layout">
+              <option value="page" selected>Page</option>
+              <option value="horizontal">Horizontal</option>
+            </select>
+          </label>
+
+          <label for="tab-stave-profile" class="tab-speed-label">
+            Staves:
+            <select id="tab-stave-profile">
+              <option value="default" selected>Auto</option>
+              <option value="scoretab">Score+Tab</option>
+              <option value="score">Score</option>
+              <option value="tab">Tab</option>
+              <option value="tabmixed">Tab Mixed</option>
+            </select>
+          </label>
+
+          <label for="tab-transpose" class="tab-speed-label">
+            Transpose:
+            <select id="tab-transpose">
+              <option value="-12">-12</option>
+              <option value="-7">-7</option>
+              <option value="-5">-5</option>
+              <option value="-2">-2</option>
+              <option value="0" selected>0</option>
+              <option value="2">+2</option>
+              <option value="5">+5</option>
+              <option value="7">+7</option>
+              <option value="12">+12</option>
+            </select>
+          </label>
         </div>
       </div>
 
@@ -94,13 +165,26 @@ noindex: true
   const prevBtn            = document.getElementById('tab-prev');
   const nextBtn            = document.getElementById('tab-next');
   const currentTitleEl     = document.getElementById('current-tab-title');
+  const songTitleEl        = document.getElementById('tab-song-title');
+  const songArtistEl       = document.getElementById('tab-song-artist');
   const viewerContainer    = document.getElementById('alphaTab');
 
   const playBtn            = document.getElementById('tab-play');
   const stopBtn            = document.getElementById('tab-stop');
   const speedSelect        = document.getElementById('tab-speed');
+  const masterVolumeInput  = document.getElementById('tab-master-volume');
   const printBtn           = document.getElementById('tab-print');
   const downloadBtn        = document.getElementById('tab-download');
+  const downloadMidiBtn    = document.getElementById('tab-download-midi');
+  const countInBtn         = document.getElementById('tab-count-in');
+  const metronomeBtn       = document.getElementById('tab-metronome');
+  const loopBtn            = document.getElementById('tab-loop');
+  const zoomSelect         = document.getElementById('tab-zoom');
+  const layoutSelect       = document.getElementById('tab-layout');
+  const staveProfileSelect = document.getElementById('tab-stave-profile');
+  const transposeSelect    = document.getElementById('tab-transpose');
+  const playerProgressEl   = document.getElementById('tab-player-progress');
+  const songPositionEl     = document.getElementById('tab-song-position');
 
   const trackSidebar       = document.getElementById('track-sidebar');
   const trackSidebarToggle = document.getElementById('track-sidebar-toggle');
@@ -110,6 +194,39 @@ noindex: true
   let alphaApi       = null;
   let currentScore   = null;
   let currentTabItem = null;
+
+  const uiState = {
+    countIn: false,
+    metronome: false,
+    loop: false,
+    playbackSpeed: 1,
+    masterVolume: 1,
+    zoom: 1,
+    layout: "page",
+    staveProfile: "default",
+    transpose: 0
+  };
+
+  function setToggle(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle("on", on);
+  }
+
+  function formatTime(seconds) {
+    if (!isFinite(seconds) || seconds < 0) return "00:00";
+    const s = Math.floor(seconds);
+    const m = Math.floor(s / 60);
+    const r = s % 60;
+    return String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
+  }
+
+  function updateSongInfo(score) {
+    if (!songTitleEl || !songArtistEl) return;
+    const title = (score && score.title) ? score.title : "";
+    const artist = (score && score.artist) ? score.artist : "";
+    songTitleEl.textContent = title || "Unknown title";
+    songArtistEl.textContent = artist || "Unknown artist";
+  }
 
   function loadIndex() {
     fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
@@ -240,8 +357,8 @@ noindex: true
       const volSlider = document.createElement("input");
       volSlider.type = "range";
       volSlider.min = "0";
-      volSlider.max = "16";
-      volSlider.value = "12";
+      volSlider.max = "100";
+      volSlider.value = "100";
 
       volWrap.appendChild(volSlider);
 
@@ -281,8 +398,8 @@ noindex: true
         if (!alphaApi) return;
         const isMuted = muteBtn.classList.toggle("on");
         try {
-          if (typeof alphaApi.setTrackMute === "function") {
-            alphaApi.setTrackMute(track.index, isMuted);
+          if (typeof alphaApi.changeTrackMute === "function") {
+            alphaApi.changeTrackMute([track], isMuted);
           }
         } catch (err) {
           console.warn("Track mute unsupported:", err);
@@ -297,12 +414,16 @@ noindex: true
         const isSolo = soloBtn.classList.toggle("on");
 
         try {
-          if (typeof alphaApi.setTrackSolo === "function") {
-            currentScore.tracks.forEach(t => {
-              alphaApi.setTrackSolo(t.index, false);
-            });
+          if (typeof alphaApi.changeTrackSolo === "function") {
             if (isSolo) {
-              alphaApi.setTrackSolo(track.index, true);
+              document
+                .querySelectorAll(".track-solo")
+                .forEach(btn => btn.classList.remove("on"));
+              soloBtn.classList.add("on");
+              alphaApi.changeTrackSolo(currentScore.tracks, false);
+              alphaApi.changeTrackSolo([track], true);
+            } else {
+              alphaApi.changeTrackSolo([track], false);
             }
           }
         } catch (err) {
@@ -316,8 +437,8 @@ noindex: true
         const v = parseInt(e.target.value, 10);
         if (isNaN(v)) return;
         try {
-          if (typeof alphaApi.setTrackVolume === "function") {
-            alphaApi.setTrackVolume(track.index, v);
+          if (typeof alphaApi.changeTrackVolume === "function") {
+            alphaApi.changeTrackVolume([track], v / 100);
           }
         } catch (err) {
           console.warn("Track volume unsupported:", err);
@@ -326,9 +447,132 @@ noindex: true
     });
   }
 
+  function applyDisplaySettings() {
+    if (!alphaApi) return;
+
+    const layoutMap = {
+      page: alphaTab.LayoutMode.Page,
+      horizontal: alphaTab.LayoutMode.Horizontal
+    };
+
+    const staveMap = {
+      default: alphaTab.StaveProfile.Default,
+      scoretab: alphaTab.StaveProfile.ScoreTab,
+      score: alphaTab.StaveProfile.Score,
+      tab: alphaTab.StaveProfile.Tab,
+      tabmixed: alphaTab.StaveProfile.TabMixed
+    };
+
+    try {
+      alphaApi.settings.display.scale = uiState.zoom;
+      alphaApi.settings.display.layoutMode = layoutMap[uiState.layout] || alphaTab.LayoutMode.Page;
+      alphaApi.settings.display.staveProfile = staveMap[uiState.staveProfile] || alphaTab.StaveProfile.Default;
+      alphaApi.updateSettings();
+      alphaApi.render();
+    } catch (err) {
+      console.warn("Display settings update unsupported:", err);
+    }
+  }
+
+  function applyPlaybackSettings() {
+    if (!alphaApi) return;
+
+    try {
+      alphaApi.playbackSpeed = uiState.playbackSpeed;
+    } catch (err) {
+      console.warn("Playback speed set unsupported:", err);
+    }
+
+    try {
+      alphaApi.masterVolume = uiState.masterVolume;
+    } catch (err) {
+      console.warn("Master volume set unsupported:", err);
+    }
+
+    try {
+      alphaApi.isLooping = uiState.loop;
+    } catch (err) {
+      console.warn("Looping unsupported:", err);
+    }
+
+    try {
+      alphaApi.countInVolume = uiState.countIn ? 1 : 0;
+    } catch (err) {
+      console.warn("Count-in unsupported:", err);
+    }
+
+    try {
+      alphaApi.metronomeVolume = uiState.metronome ? 1 : 0;
+    } catch (err) {
+      console.warn("Metronome unsupported:", err);
+    }
+  }
+
+  function applyTranspose() {
+    if (!alphaApi || !currentScore) return;
+    try {
+      if (typeof alphaApi.changeTrackTranspositionPitch === "function") {
+        alphaApi.changeTrackTranspositionPitch(currentScore.tracks, uiState.transpose);
+      }
+    } catch (err) {
+      console.warn("Transpose unsupported:", err);
+    }
+  }
+
+  function wirePlayerEvents() {
+    if (!alphaApi) return;
+
+    if (playerProgressEl) {
+      playerProgressEl.textContent = "Loading 0%";
+    }
+
+    if (songPositionEl) {
+      songPositionEl.textContent = "00:00 / 00:00";
+    }
+
+    if (alphaApi.soundFontLoad && alphaApi.soundFontLoad.on) {
+      alphaApi.soundFontLoad.on(function(e) {
+        if (playerProgressEl && e && typeof e.percentage === "number") {
+          playerProgressEl.textContent = "Loading " + e.percentage + "%";
+        }
+      });
+    }
+
+    if (alphaApi.soundFontLoaded && alphaApi.soundFontLoaded.on) {
+      alphaApi.soundFontLoaded.on(function() {
+        if (playerProgressEl && playerProgressEl.textContent.indexOf("Loading") === 0) {
+          playerProgressEl.textContent = "SoundFont loaded";
+        }
+      });
+    }
+
+    alphaApi.playerReady.on(function() {
+      if (playBtn) playBtn.disabled = false;
+      if (stopBtn) stopBtn.disabled = false;
+      if (playerProgressEl) playerProgressEl.textContent = "Ready";
+    });
+
+    alphaApi.playerStateChanged.on(function(e) {
+      if (!playBtn || !e) return;
+      const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
+      playBtn.textContent = isPlaying ? "Pause" : "Play";
+    });
+
+    alphaApi.playerPositionChanged.on(function(e) {
+      if (!songPositionEl || !e) return;
+      const now = formatTime(e.currentTime);
+      const end = formatTime(e.endTime);
+      songPositionEl.textContent = now + " / " + end;
+    });
+  }
+
   function createAlphaTab(item) {
     viewerContainer.innerHTML = "";
     currentScore = null;
+    if (playBtn) playBtn.disabled = true;
+    if (stopBtn) stopBtn.disabled = true;
+    if (playerProgressEl) playerProgressEl.textContent = "Loading 0%";
+    if (songPositionEl) songPositionEl.textContent = "00:00 / 00:00";
 
     const viewportEl = document.querySelector(".at-viewport");
 
@@ -349,10 +593,15 @@ noindex: true
     };
 
     alphaApi = new alphaTab.AlphaTabApi(viewerContainer, settings);
+    applyDisplaySettings();
+    applyPlaybackSettings();
+    wirePlayerEvents();
 
     alphaApi.scoreLoaded.on(function(score) {
       currentScore = score;
       populateTracks(score);
+      updateSongInfo(score);
+      applyTranspose();
 
       // Reset speed on new score
       if (speedSelect && speedSelect.value) {
@@ -371,6 +620,8 @@ noindex: true
   function loadTab(item) {
     currentTabItem = item;
     currentTitleEl.textContent = item.title;
+    if (songTitleEl) songTitleEl.textContent = item.title || "Loading...";
+    if (songArtistEl) songArtistEl.textContent = "Loading...";
     createAlphaTab(item);
   }
 
@@ -422,35 +673,125 @@ noindex: true
   // Playback speed
   if (speedSelect) {
     speedSelect.addEventListener("change", function() {
-      if (!alphaApi) return;
       const s = parseFloat(speedSelect.value);
       if (isNaN(s)) return;
-      try {
-        alphaApi.playbackSpeed = s;
-      } catch (err) {
-        console.warn("Playback speed set unsupported:", err);
+      uiState.playbackSpeed = s;
+      if (alphaApi) {
+        try {
+          alphaApi.playbackSpeed = s;
+        } catch (err) {
+          console.warn("Playback speed set unsupported:", err);
+        }
       }
     });
   }
 
-  // Print current tab: open a simple print window with rendered SVG
+  // Master volume
+  if (masterVolumeInput) {
+    masterVolumeInput.addEventListener("input", function() {
+      const v = parseInt(masterVolumeInput.value, 10);
+      if (isNaN(v)) return;
+      uiState.masterVolume = Math.max(0, Math.min(1, v / 100));
+      if (alphaApi) {
+        try {
+          alphaApi.masterVolume = uiState.masterVolume;
+        } catch (err) {
+          console.warn("Master volume set unsupported:", err);
+        }
+      }
+    });
+  }
+
+  // Count-in / metronome / loop
+  if (countInBtn) {
+    countInBtn.addEventListener("click", function() {
+      uiState.countIn = !uiState.countIn;
+      setToggle(countInBtn, uiState.countIn);
+      if (alphaApi) {
+        try {
+          alphaApi.countInVolume = uiState.countIn ? 1 : 0;
+        } catch (err) {
+          console.warn("Count-in unsupported:", err);
+        }
+      }
+    });
+    setToggle(countInBtn, uiState.countIn);
+  }
+
+  if (metronomeBtn) {
+    metronomeBtn.addEventListener("click", function() {
+      uiState.metronome = !uiState.metronome;
+      setToggle(metronomeBtn, uiState.metronome);
+      if (alphaApi) {
+        try {
+          alphaApi.metronomeVolume = uiState.metronome ? 1 : 0;
+        } catch (err) {
+          console.warn("Metronome unsupported:", err);
+        }
+      }
+    });
+    setToggle(metronomeBtn, uiState.metronome);
+  }
+
+  if (loopBtn) {
+    loopBtn.addEventListener("click", function() {
+      uiState.loop = !uiState.loop;
+      setToggle(loopBtn, uiState.loop);
+      if (alphaApi) {
+        try {
+          alphaApi.isLooping = uiState.loop;
+        } catch (err) {
+          console.warn("Looping unsupported:", err);
+        }
+      }
+    });
+    setToggle(loopBtn, uiState.loop);
+  }
+
+  // Zoom / layout / stave profile / transpose
+  if (zoomSelect) {
+    zoomSelect.addEventListener("change", function() {
+      const z = parseInt(zoomSelect.value, 10);
+      if (isNaN(z)) return;
+      uiState.zoom = z / 100;
+      applyDisplaySettings();
+    });
+  }
+
+  if (layoutSelect) {
+    layoutSelect.addEventListener("change", function() {
+      uiState.layout = layoutSelect.value || "page";
+      applyDisplaySettings();
+    });
+  }
+
+  if (staveProfileSelect) {
+    staveProfileSelect.addEventListener("change", function() {
+      uiState.staveProfile = staveProfileSelect.value || "default";
+      applyDisplaySettings();
+    });
+  }
+
+  if (transposeSelect) {
+    transposeSelect.addEventListener("change", function() {
+      const t = parseInt(transposeSelect.value, 10);
+      if (isNaN(t)) return;
+      uiState.transpose = t;
+      applyTranspose();
+    });
+  }
+
+  // Print current tab
   if (printBtn) {
     printBtn.addEventListener("click", function() {
-      if (!viewerContainer || !viewerContainer.innerHTML) return;
-
-      const w = window.open("", "_blank");
-      if (!w) return;
-
-      w.document.write("<html><head><title>" +
-        (currentTitleEl.textContent || "Tab") +
-        "</title>");
-      w.document.write("<style>body{margin:0;padding:0;background:#fff;color:#000;font-family:sans-serif;}svg{width:100%;height:auto;}</style>");
-      w.document.write("</head><body>");
-      w.document.write(viewerContainer.innerHTML);
-      w.document.write("</body></html>");
-      w.document.close();
-      w.focus();
-      w.print();
+      if (!alphaApi) return;
+      try {
+        if (typeof alphaApi.print === "function") {
+          alphaApi.print();
+        }
+      } catch (err) {
+        console.warn("print unsupported:", err);
+      }
     });
   }
 
@@ -464,6 +805,20 @@ noindex: true
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+    });
+  }
+
+  // Download MIDI
+  if (downloadMidiBtn) {
+    downloadMidiBtn.addEventListener("click", function() {
+      if (!alphaApi) return;
+      try {
+        if (typeof alphaApi.downloadMidi === "function") {
+          alphaApi.downloadMidi();
+        }
+      } catch (err) {
+        console.warn("Download MIDI unsupported:", err);
+      }
     });
   }
 

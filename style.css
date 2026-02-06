@@ -348,6 +348,17 @@ body::after {
   padding: 2rem 0;
 }
 
+.tab-song-info {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  margin-top: -0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tab-song-sep {
+  padding: 0 0.4rem;
+}
+
 /* Search + sort controls */
 .tabs-controls {
   display: flex;
@@ -592,6 +603,17 @@ body::after {
   margin-bottom: 0.75rem;
 }
 
+.tab-controls-row-secondary {
+  margin-top: -0.25rem;
+}
+
+.tab-player-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 /* Player controls */
 .tab-player-controls button {
   background: #000;
@@ -609,6 +631,23 @@ body::after {
   color: #000;
 }
 
+.tab-player-controls button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.tab-player-controls .tab-toggle.on {
+  background: #0f0;
+  color: #000;
+}
+
+.tab-player-progress,
+.tab-song-position {
+  font-size: 0.7rem;
+  padding: 0 0.25rem;
+  opacity: 0.85;
+}
+
 /* Speed select inside controls */
 .tab-speed-label {
   font-size: 0.7rem;
@@ -620,6 +659,13 @@ body::after {
   margin-top: 0;
   padding: 0.2rem 0.4rem;
   font-size: 0.7rem;
+}
+
+.tab-speed-label input[type="range"] {
+  width: 120px;
+  vertical-align: middle;
+  margin-left: 0.2rem;
+  accent-color: #0f0;
 }
 
 /* AlphaTab viewer container */
