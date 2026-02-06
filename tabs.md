@@ -85,7 +85,7 @@ noindex: true
           <button id="tab-loop" class="tab-toggle" type="button">Loop</button>
 
           <button id="tab-print">Print</button>
-          <button id="tab-download">Download</button>
+          <button id="tab-download">Download .GP</button>
           <button id="tab-download-midi">Download MIDI</button>
         </div>
         <div class="tab-player-controls">
@@ -114,10 +114,10 @@ noindex: true
           <label for="tab-stave-profile" class="tab-speed-label">
             Staves:
             <select id="tab-stave-profile">
-              <option value="default" selected>Auto</option>
+              <option value="default">Auto</option>
               <option value="scoretab">Score+Tab</option>
               <option value="score">Score</option>
-              <option value="tab">Tab</option>
+              <option value="tab" selected>Tab</option>
               <option value="tabmixed">Tab Mixed</option>
             </select>
           </label>
@@ -203,7 +203,7 @@ noindex: true
     masterVolume: 1,
     zoom: 1,
     layout: "page",
-    staveProfile: "default",
+    staveProfile: "tab",
     transpose: 0
   };
 
@@ -567,6 +567,13 @@ noindex: true
   }
 
   function createAlphaTab(item) {
+    if (alphaApi) {
+      try {
+        alphaApi.stop();
+      } catch (err) {
+        console.warn("stop unsupported:", err);
+      }
+    }
     viewerContainer.innerHTML = "";
     currentScore = null;
     if (playBtn) playBtn.disabled = true;
