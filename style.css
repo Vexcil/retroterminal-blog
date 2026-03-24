@@ -1,13 +1,85 @@
+:root {
+  --bg: #000;
+  --fg: #0f0;
+  --accent: #0c6;
+  --border: #0f0;
+  --fg-rgb: 0, 255, 0;
+}
+
+.theme-green {
+  --bg: #000;
+  --fg: #0f0;
+  --accent: #0c6;
+  --border: #0f0;
+  --fg-rgb: 0, 255, 0;
+}
+
+.theme-blackred {
+  --bg: #000;
+  --fg: #ff3b3b;
+  --accent: #ff7a7a;
+  --border: #ff3b3b;
+  --fg-rgb: 255, 59, 59;
+}
+
+.theme-blackorange {
+  --bg: #000;
+  --fg: #ff9f1a;
+  --accent: #ffc266;
+  --border: #ff9f1a;
+  --fg-rgb: 255, 159, 26;
+}
+
+.theme-blackblue {
+  --bg: #000;
+  --fg: #4169e1;
+  --accent: #87a3ff;
+  --border: #4169e1;
+  --fg-rgb: 65, 105, 225;
+}
+
+.theme-blackpurple {
+  --bg: #000;
+  --fg: #c07cff;
+  --accent: #e1b7ff;
+  --border: #c07cff;
+  --fg-rgb: 192, 124, 255;
+}
+
+.theme-unix {
+  --bg: #002a7f;
+  --fg: #fff;
+  --accent: #9fd0ff;
+  --border: #fff;
+  --fg-rgb: 255, 255, 255;
+}
+
+.theme-tan {
+  --bg: #f4e7cf;
+  --fg: #4b2f1f;
+  --accent: #7a4b2a;
+  --border: #4b2f1f;
+  --fg-rgb: 75, 47, 31;
+}
+
+.theme-bluewhite {
+  --bg: #f5f7ff;
+  --fg: #0a2a6b;
+  --accent: #1e5bff;
+  --border: #0a2a6b;
+  --fg-rgb: 10, 42, 107;
+}
+
 html,
 body {
   margin: 0;
   padding: 0;
-  background: #000; /* solid black everywhere */
+  background: var(--bg);
 }
 
 /* Base body styling */
 body {
-  color: #0f0;
+  color: var(--fg);
   font-family: 'Press Start 2P', monospace;
   font-size: 12px;
   position: relative;
@@ -27,18 +99,18 @@ body {
 
 /* Links */
 a {
-  color: #0f0;
+  color: var(--fg);
   text-decoration: none;
 }
 a:hover {
-  color: #0c6;
+  color: var(--accent);
 }
 
 /* Header and footer */
 header {
-  background: #000;
+  background: var(--bg);
   padding: 1rem 2rem;
-  border-bottom: 1px solid #0f0;
+  border-bottom: 1px solid var(--border);
 
   display: flex;
   justify-content: space-between;
@@ -64,14 +136,14 @@ header h1 {
 .nav-links .btn {
   display: inline-block;
   padding: 0.25rem 0.75rem;
-  border: 1px solid #0f0;
+  border: 1px solid var(--border);
 }
 
 /* Footer */
 footer {
-  background: #000;
+  background: var(--bg);
   padding: 1rem 2rem;
-  border-top: 1px solid #0f0;
+  border-top: 1px solid var(--border);
   margin-top: 2rem;
   text-align: center;
 }
@@ -85,26 +157,26 @@ footer {
   text-align: center;
   padding: 4rem 2rem;
   padding-top: 1rem;
-  border-bottom: 1px dashed #0f0;
+  border-bottom: 1px dashed var(--border);
 }
 .hero .btn {
   display: inline-block;
   margin-top: 1rem;
   padding: 0.5rem 1rem;
   background: transparent;
-  border: 2px solid #0f0;
-  color: #0f0;
+  border: 2px solid var(--border);
+  color: var(--fg);
   cursor: pointer;
 }
 .hero .btn:hover {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* Services */
 .services {
   padding: 2rem;
-  border-bottom: 1px dashed #0f0;
+  border-bottom: 1px dashed var(--border);
 }
 .service-cards {
   display: flex;
@@ -114,8 +186,8 @@ footer {
   margin-top: 1rem;
 }
 .card {
-  background: #000;
-  border: 1px solid #0f0;
+  background: var(--bg);
+  border: 1px solid var(--border);
   padding: 1rem;
   width: 200px;
 }
@@ -134,9 +206,9 @@ form {
 input,
 textarea,
 button {
-  background: #000;
-  border: 1px solid #0f0;
-  color: #0f0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
   padding: 0.5rem;
   font-family: 'Press Start 2P', monospace;
 }
@@ -144,15 +216,15 @@ button {
   cursor: pointer;
 }
 button:hover {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 select,
 option {
   font-family: 'Press Start 2P', monospace;
-  background-color: #000;
-  color: #0f0;
-  border: 2px solid #0f0;
+  background-color: var(--bg);
+  color: var(--fg);
+  border: 2px solid var(--border);
   padding: 5px;
   margin-top: 10px;
   width: 200px;
@@ -160,8 +232,8 @@ option {
 }
 select:focus {
   outline: none;
-  border-color: #0f0;
-  box-shadow: 0 0 8px #0f0;
+  border-color: var(--border);
+  box-shadow: 0 0 8px var(--fg);
 }
 
 /* CRT container */
@@ -179,7 +251,7 @@ select:focus {
 
   background:
     linear-gradient(rgba(0,0,0,0.25) 50%, rgba(0,0,0,0) 50%),
-    linear-gradient(90deg, rgba(0,255,0,0.02), rgba(0,255,0,0.02));
+    linear-gradient(90deg, rgba(var(--fg-rgb),0.02), rgba(var(--fg-rgb),0.02));
 
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
@@ -196,12 +268,12 @@ body::after {
 
   background-image: linear-gradient(
     to bottom,
-    rgba(0,255,0,0.0) 0px,
-    rgba(0,255,0,0.0) 6px,
-    rgba(0,255,0,0.25) 8px,
-    rgba(0,255,0,0.12) 30px,
-    rgba(0,255,0,0.04) 44px,
-    rgba(0,255,0,0.0) 48px
+    rgba(var(--fg-rgb),0.0) 0px,
+    rgba(var(--fg-rgb),0.0) 6px,
+    rgba(var(--fg-rgb),0.25) 8px,
+    rgba(var(--fg-rgb),0.12) 30px,
+    rgba(var(--fg-rgb),0.04) 44px,
+    rgba(var(--fg-rgb),0.0) 48px
   );
 
   background-size: 100% 48px;
@@ -228,7 +300,7 @@ body::after {
 }
 @keyframes colorsep {
   0%,100% { text-shadow: 1px 0px 1px cyan, -1px 0px 1px magenta; }
-  50%     { text-shadow: 0px 0px 3px #0f0; }
+  50%     { text-shadow: 0px 0px 3px var(--fg); }
 }
 
 /* Cursor blink */
@@ -237,7 +309,7 @@ body::after {
   display: inline-block;
   width: 8px;
   height: 16px;
-  background: #0f0;
+  background: var(--fg);
   margin-left: 4px;
   vertical-align: bottom;
   animation: cursor-blink 1s steps(2) infinite;
@@ -370,9 +442,9 @@ body::after {
 #tab-search {
   flex: 1 1 200px;
   padding: 0.5rem;
-  background: #000;
-  border: 1px solid #0f0;
-  color: #0f0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
   font-family: 'Press Start 2P', monospace;
   font-size: 0.8rem;
   box-sizing: border-box;
@@ -389,7 +461,7 @@ body::after {
 #tab-list {
   max-height: 260px;
   overflow-y: auto;
-  border: 1px solid rgba(0, 255, 0, 0.3);
+  border: 1px solid rgba(var(--fg-rgb), 0.3);
 }
 
 /* Tab list */
@@ -404,7 +476,7 @@ body::after {
   justify-content: space-between;
   align-items: center;
   padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.15);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.15);
 }
 
 .tab-list-item:last-child {
@@ -422,17 +494,17 @@ body::after {
 /* View button in list */
 .tab-list-item button {
   padding: 0.25rem 0.75rem;
-  background: #000;
-  border: 1px solid #0f0;
-  color: #0f0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
   font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
 }
 
 .tab-list-item button:hover {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* Pagination */
@@ -445,9 +517,9 @@ body::after {
 
 .tabs-pagination button {
   padding: 0.25rem 0.75rem;
-  background: #000;
-  border: 1px solid #0f0;
-  color: #0f0;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--fg);
   font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
   cursor: pointer;
@@ -472,10 +544,10 @@ body::after {
 /* Track sidebar */
 .at-sidebar {
   width: 190px;
-  border: 1px solid rgba(0, 255, 0, 0.4);
+  border: 1px solid rgba(var(--fg-rgb), 0.4);
   padding: 0.25rem;
   box-sizing: border-box;
-  background: #000;
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   transition: width 0.2s ease;
@@ -494,7 +566,7 @@ body::after {
   letter-spacing: 0.1em;
   cursor: pointer;
   padding: 0.25rem 0;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.4);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.4);
 }
 
 .at-sidebar-inner {
@@ -509,7 +581,7 @@ body::after {
 .at-sidebar-title {
   font-size: 0.9rem;
   margin-bottom: 0.4rem;
-  border-bottom: 1px solid rgba(0, 255, 0, 0.4);
+  border-bottom: 1px solid rgba(var(--fg-rgb), 0.4);
   padding-bottom: 0.25rem;
 }
 
@@ -530,17 +602,17 @@ body::after {
 
 .at-track-row-all {
   margin-bottom: 0.5rem;
-  border-bottom: 1px dashed rgba(0, 255, 0, 0.4);
+  border-bottom: 1px dashed rgba(var(--fg-rgb), 0.4);
   padding-bottom: 0.3rem;
 }
 
 .at-track-row:hover {
-  background: rgba(0, 255, 0, 0.1);
+  background: rgba(var(--fg-rgb), 0.1);
 }
 
 .at-track-row.active {
-  background: rgba(0, 255, 0, 0.3);
-  color: #000;
+  background: rgba(var(--fg-rgb), 0.3);
+  color: var(--bg);
 }
 
 .at-track-header {
@@ -563,9 +635,9 @@ body::after {
 }
 
 .at-track-buttons button {
-  background: #000;
-  color: #0f0;
-  border: 1px solid #0f0;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
   padding: 0.1rem 0.3rem;
   font-family: 'Press Start 2P', monospace;
   font-size: 0.6rem;
@@ -573,8 +645,8 @@ body::after {
 }
 
 .at-track-buttons button.on {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 /* Volume slider under each track row */
@@ -585,7 +657,7 @@ body::after {
 .at-track-volume input[type="range"] {
   width: 100%;
   cursor: pointer;
-  accent-color: #0f0;
+  accent-color: var(--fg);
 }
 
 /* Main viewer column */
@@ -616,9 +688,9 @@ body::after {
 
 /* Player controls */
 .tab-player-controls button {
-  background: #000;
-  color: #0f0;
-  border: 1px solid #0f0;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--border);
   padding: 0.25rem 0.75rem;
   font-family: 'Press Start 2P', monospace;
   font-size: 0.7rem;
@@ -627,8 +699,8 @@ body::after {
 }
 
 .tab-player-controls button:hover {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 .tab-player-controls button:disabled {
@@ -637,8 +709,8 @@ body::after {
 }
 
 .tab-player-controls .tab-toggle.on {
-  background: #0f0;
-  color: #000;
+  background: var(--fg);
+  color: var(--bg);
 }
 
 .tab-player-progress,
@@ -665,16 +737,16 @@ body::after {
   width: 120px;
   vertical-align: middle;
   margin-left: 0.2rem;
-  accent-color: #0f0;
+  accent-color: var(--fg);
 }
 
 /* AlphaTab viewer container */
 .at-wrap {
   overflow-x: auto;
-  border: 1px solid rgba(0, 255, 0, 0.4);
+  border: 1px solid rgba(var(--fg-rgb), 0.4);
   padding: 0.5rem;
   margin-top: 0.5rem;
-  background: #000;
+  background: var(--bg);
 }
 
 .at-viewport {
@@ -735,25 +807,86 @@ body::after {
 
 /* AlphaTab text readability: green notes, dark staff */
 .at-main text {
-  fill: #0f0 !important;
-  stroke: #0f0 !important;
+  fill: var(--fg) !important;
+  stroke: var(--fg) !important;
   stroke-width: 0.6px !important;
   paint-order: stroke fill;
-  text-shadow: 0 0 4px rgba(0, 255, 0, 0.45);
+  text-shadow: 0 0 4px rgba(var(--fg-rgb), 0.45);
 }
 
 /* Slightly darken staff lines */
 .at-main line,
 .at-main path {
-  stroke: rgba(0, 255, 0, 0.7);
+  stroke: rgba(var(--fg-rgb), 0.7);
 }
 
 /* Play cursor styling so it looks CRT-ish but doesn't obliterate numbers */
 #alphaTab .at-cursor-bar {
-  background: rgba(0, 255, 0, 0.12);
+  background: rgba(var(--fg-rgb), 0.12);
 }
 
 #alphaTab .at-cursor-beat {
-  background: rgba(0, 255, 0, 0.25);
+  background: rgba(var(--fg-rgb), 0.25);
   mix-blend-mode: screen;
+}
+
+.theme-switcher {
+  position: fixed;
+  left: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 20;
+  transition: transform 0.25s ease, opacity 0.25s ease;
+}
+
+.theme-switcher.hidden {
+  transform: translateX(-120%);
+  opacity: 0.2;
+}
+
+.theme-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4) inset;
+  background: var(--bg);
+}
+
+.theme-dot.small {
+  width: 28px;
+  height: 28px;
+  font-size: 0;
+  border: 2px solid #000;
+}
+
+.theme-options {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 0;
+  overflow: hidden;
+  transition: max-width 0.25s ease;
+}
+
+.theme-switcher.open .theme-options {
+  max-width: 360px;
+}
+
+#themeToggle {
+  font-size: 18px;
+  line-height: 1;
+}
+
+@media (max-width: 720px) {
+  .theme-switcher {
+    left: 10px;
+    bottom: 10px;
+  }
 }

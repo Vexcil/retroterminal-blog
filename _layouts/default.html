@@ -24,7 +24,7 @@
   {% endif %}
 </head>
 
-<body>
+<body class="theme-green">
   <div id="screen" class="crt crt-colorsep">
     {% include header.html %}
     <main class="main-content">
@@ -35,6 +35,68 @@
     </main>
     {% include footer.html %}
   </div>
+  <div class="theme-switcher" id="themeSwitcher">
+    <div class="theme-dot" id="themeToggle">&gt;_</div>
+    <div class="theme-options" id="themeOptions">
+      <div class="theme-dot small" data-theme="theme-green" style="background:#000; box-shadow: inset 0 0 0 2px #0f0;"></div>
+      <div class="theme-dot small" data-theme="theme-blackred" style="background:#000; box-shadow: inset 0 0 0 2px #ff3b3b;"></div>
+      <div class="theme-dot small" data-theme="theme-blackorange" style="background:#000; box-shadow: inset 0 0 0 2px #ff9f1a;"></div>
+      <div class="theme-dot small" data-theme="theme-blackblue" style="background:#000; box-shadow: inset 0 0 0 2px #4169e1;"></div>
+      <div class="theme-dot small" data-theme="theme-blackpurple" style="background:#000; box-shadow: inset 0 0 0 2px #c07cff;"></div>
+      <div class="theme-dot small" data-theme="theme-unix" style="background:#002a7f; box-shadow: inset 0 0 0 2px #fff;"></div>
+      <div class="theme-dot small" data-theme="theme-tan" style="background:#f4e7cf; box-shadow: inset 0 0 0 2px #4b2f1f;"></div>
+      <div class="theme-dot small" data-theme="theme-bluewhite" style="background:#f5f7ff; box-shadow: inset 0 0 0 2px #0a2a6b;"></div>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const themes = [
+        "theme-green",
+        "theme-blackred",
+        "theme-blackorange",
+        "theme-blackblue",
+        "theme-blackpurple",
+        "theme-unix",
+        "theme-tan",
+        "theme-bluewhite"
+      ];
+      const body = document.body;
+      const switcher = document.getElementById("themeSwitcher");
+      const toggle = document.getElementById("themeToggle");
+      const options = document.getElementById("themeOptions");
+
+      function setTheme(themeName) {
+        themes.forEach(name => body.classList.remove(name));
+        body.classList.add(themeName);
+        localStorage.setItem("retroterminal_theme", themeName);
+      }
+
+      const saved = localStorage.getItem("retroterminal_theme");
+      if (saved && themes.includes(saved)) {
+        setTheme(saved);
+      }
+
+      toggle.addEventListener("click", () => {
+        switcher.classList.toggle("open");
+      });
+
+      options.querySelectorAll("[data-theme]").forEach(el => {
+        el.addEventListener("click", () => {
+          setTheme(el.getAttribute("data-theme"));
+        });
+      });
+
+      let lastY = window.scrollY;
+      window.addEventListener("scroll", () => {
+        const y = window.scrollY;
+        if (y > lastY + 10) {
+          switcher.classList.add("hidden");
+        } else if (y < lastY - 10) {
+          switcher.classList.remove("hidden");
+        }
+        lastY = y;
+      }, { passive: true });
+    })();
+  </script>
 </body>
 </html>
-
