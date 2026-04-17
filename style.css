@@ -758,6 +758,8 @@ body.glowline-off::after {
   margin-top: 1rem;
   position: relative;
   align-items: stretch;
+  padding-right: 2.4rem;
+  box-sizing: border-box;
   transition: margin 0.25s ease, padding 0.25s ease, width 0.25s ease;
 }
 
@@ -765,14 +767,13 @@ body.glowline-off::after {
   width: 100vw;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
-  padding: 0 1.25rem;
-  box-sizing: border-box;
+  padding: 0 3.6rem 0 1.25rem;
 }
 
 .tabs-expand-toggle {
   position: absolute;
   top: 0;
-  right: -2.2rem;
+  right: 0;
   bottom: 0;
   width: 1.8rem;
   border: 1px solid rgba(var(--fg-rgb), 0.4);
