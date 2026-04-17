@@ -145,6 +145,15 @@ noindex: true
         </div>
       </div>
     </div>
+
+    <button
+      type="button"
+      class="tabs-expand-toggle"
+      id="tabs-expand-toggle"
+      aria-label="Expand tab viewer to viewport width"
+      aria-expanded="false"
+      title="Expand viewer"
+    >▸</button>
   </div>
 </div>
 
@@ -168,6 +177,8 @@ noindex: true
   const songTitleEl        = document.getElementById('tab-song-title');
   const songArtistEl       = document.getElementById('tab-song-artist');
   const viewerContainer    = document.getElementById('alphaTab');
+  const viewerShell        = document.getElementById('tabs-viewer-shell');
+  const viewerExpandBtn    = document.getElementById('tabs-expand-toggle');
 
   const playBtn            = document.getElementById('tab-play');
   const stopBtn            = document.getElementById('tab-stop');
@@ -226,6 +237,37 @@ noindex: true
     const artist = (score && score.artist) ? score.artist : "";
     songTitleEl.textContent = title || "Unknown title";
     songArtistEl.textContent = artist || "Unknown artist";
+  }
+
+  function refreshViewerLayout() {
+    if (!alphaApi) return;
+
+    window.requestAnimationFrame(function() {
+      window.requestAnimationFrame(function() {
+        try {
+          alphaApi.render();
+        } catch (err) {
+          console.warn("Viewer refresh unsupported:", err);
+        }
+      });
+    });
+  }
+
+  function setViewerExpanded(expanded) {
+    if (!viewerShell || !viewerExpandBtn) return;
+
+    viewerShell.classList.toggle("expanded", expanded);
+    viewerExpandBtn.textContent = expanded ? "◂" : "▸";
+    viewerExpandBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
+    viewerExpandBtn.setAttribute(
+      "aria-label",
+      expanded
+        ? "Collapse tab viewer back to page width"
+        : "Expand tab viewer to viewport width"
+    );
+    viewerExpandBtn.title = expanded ? "Collapse viewer" : "Expand viewer";
+
+    refreshViewerLayout();
   }
 
   function loadIndex() {
@@ -639,6 +681,16 @@ noindex: true
       trackSidebarToggle.textContent = collapsed ? "TRACKS" : "TRACKS ◂";
     });
   }
+
+  if (viewerExpandBtn && viewerShell) {
+    viewerExpandBtn.addEventListener("click", function() {
+      setViewerExpanded(!viewerShell.classList.contains("expanded"));
+    });
+  }
+
+  window.addEventListener("resize", function() {
+    refreshViewerLayout();
+  });
 
   // "All tracks" selector
   if (trackAllRow) {

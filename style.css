@@ -756,6 +756,44 @@ body.glowline-off::after {
   display: flex;
   gap: 1rem;
   margin-top: 1rem;
+  position: relative;
+  align-items: stretch;
+  transition: margin 0.25s ease, padding 0.25s ease, width 0.25s ease;
+}
+
+.tabs-viewer-shell.expanded {
+  width: 100vw;
+  margin-left: calc(50% - 50vw);
+  margin-right: calc(50% - 50vw);
+  padding: 0 1.25rem;
+  box-sizing: border-box;
+}
+
+.tabs-expand-toggle {
+  position: absolute;
+  top: 0;
+  right: -2.2rem;
+  bottom: 0;
+  width: 1.8rem;
+  border: 1px solid rgba(var(--fg-rgb), 0.4);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease, color 0.2s ease, right 0.25s ease;
+}
+
+.tabs-expand-toggle:hover {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.tabs-viewer-shell.expanded .tabs-expand-toggle {
+  right: 0;
 }
 
 /* Track sidebar */
@@ -981,6 +1019,7 @@ body.glowline-off::after {
 @media (max-width: 900px) {
   .tabs-viewer-shell {
     flex-direction: column;
+    padding-right: 0;
   }
 
   .at-sidebar {
@@ -995,6 +1034,19 @@ body.glowline-off::after {
     writing-mode: horizontal-tb;
     transform: none;
     text-align: left;
+  }
+
+  .tabs-viewer-shell.expanded {
+    width: auto;
+    margin-left: 0;
+    margin-right: 0;
+    padding: 0;
+  }
+
+  .tabs-expand-toggle {
+    position: static;
+    width: 100%;
+    min-height: 2.5rem;
   }
 }
 
