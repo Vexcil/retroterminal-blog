@@ -272,6 +272,20 @@ noindex: true
     };
   }
 
+  function upsertTabItem(item) {
+    if (!item || !item.file) return;
+
+    const existingIndex = allTabs.findIndex(function(entry) {
+      return entry.file === item.file;
+    });
+
+    if (existingIndex >= 0) {
+      allTabs[existingIndex] = item;
+    } else {
+      allTabs.push(item);
+    }
+  }
+
   function formatTime(seconds) {
     if (!isFinite(seconds) || seconds < 0) return "00:00";
     const s = Math.floor(seconds);
@@ -380,13 +394,14 @@ noindex: true
 
       setUploadStatus(payload.message || "Upload complete.", "success");
       uploadInput.value = "";
-      await loadIndex();
 
       if (payload.file) {
         const uploadedItem = normalizeTabItem({
           title: payload.title || file.name,
           file: payload.file
         });
+        upsertTabItem(uploadedItem);
+        applyFiltersAndRender();
         loadTab(uploadedItem);
       }
     } catch (err) {
