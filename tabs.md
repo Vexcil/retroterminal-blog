@@ -194,7 +194,6 @@ noindex: true
   const primaryApiUrl = {{ site.tabs_api_url | default: "https://tabs.retroterminal.net/api/tabs" | jsonify }};
   const playApiUrl = {{ site.tabs_play_api_url | default: "https://tabs.retroterminal.net/api/play" | jsonify }};
   const primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
-  const fallbackIndexUrl = {{ "/assets/data/tabs.json" | relative_url | jsonify }};
   const fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
   const uploadUrl = {{ site.tabs_upload_url | default: "https://tabs.retroterminal.net/upload" | jsonify }};
 
@@ -408,9 +407,6 @@ noindex: true
 
     const sources = [];
     if (primaryIndexUrl) sources.push(primaryIndexUrl);
-    if (fallbackIndexUrl && fallbackIndexUrl !== primaryIndexUrl) {
-      sources.push(fallbackIndexUrl);
-    }
 
     let lastError = null;
 

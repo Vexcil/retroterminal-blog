@@ -8,6 +8,10 @@ tabs_index_url: https://tabs.retroterminal.net/data/tabs.json
 tabs_file_base_url: https://tabs.retroterminal.net
 tabs_upload_url: https://tabs.retroterminal.net/upload
 
+exclude:
+  - assets/tabs
+  - assets/data/tabs.json
+
 permalink: pretty
 markdown: kramdown
 
