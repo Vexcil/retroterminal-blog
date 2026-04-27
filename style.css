@@ -656,6 +656,24 @@ body.glowline-off::after {
   margin-bottom: 1rem;
 }
 
+.tabs-upload-status {
+  margin: -0.35rem 0 0.85rem;
+  font-size: 0.72rem;
+  min-height: 1em;
+}
+
+.tabs-upload-status.success {
+  color: #6ee56e;
+}
+
+.tabs-upload-status.error {
+  color: #ff8080;
+}
+
+.tabs-upload-status.working {
+  opacity: 0.85;
+}
+
 #tab-search {
   flex: 1 1 200px;
   padding: 0.5rem;

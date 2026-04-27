@@ -1,0 +1,15 @@
+[Unit]
+Description=RetroTerminal tabs host
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=vex
+WorkingDirectory=/home/vex/retroterminal-blog
+ExecStart=/usr/bin/env python3 /home/vex/retroterminal-blog/scripts/tabs_host_server.py --host 0.0.0.0 --port 4080
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

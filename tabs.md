@@ -12,7 +12,15 @@ noindex: true
       <option value="title-asc">Title A to Z</option>
       <option value="title-desc">Title Z to A</option>
     </select>
+    <button type="button" id="tab-upload-button">Upload</button>
+    <input
+      type="file"
+      id="tab-upload-file"
+      accept=".gp,.gp3,.gp4,.gp5,.gpx,.musicxml,.xml,.capx"
+      hidden
+    />
   </div>
+  <p id="tab-upload-status" class="tabs-upload-status" aria-live="polite"></p>
 
   <div id="tab-list"></div>
 
@@ -162,6 +170,10 @@ noindex: true
 (function() {
   // show ~30 per page, rest via pagination
   const PAGE_SIZE = 30;
+  const primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
+  const fallbackIndexUrl = {{ "/assets/data/tabs.json" | relative_url | jsonify }};
+  const fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
+  const uploadUrl = {{ site.tabs_upload_url | default: "https://tabs.retroterminal.net/upload" | jsonify }};
 
   let allTabs = [];
   let filteredTabs = [];
@@ -173,6 +185,9 @@ noindex: true
   const pageInfoEl         = document.getElementById('tab-page-info');
   const prevBtn            = document.getElementById('tab-prev');
   const nextBtn            = document.getElementById('tab-next');
+  const uploadInput        = document.getElementById('tab-upload-file');
+  const uploadBtn          = document.getElementById('tab-upload-button');
+  const uploadStatusEl     = document.getElementById('tab-upload-status');
   const currentTitleEl     = document.getElementById('current-tab-title');
   const songTitleEl        = document.getElementById('tab-song-title');
   const songArtistEl       = document.getElementById('tab-song-artist');
@@ -223,6 +238,40 @@ noindex: true
     btn.classList.toggle("on", on);
   }
 
+  function setUploadStatus(message, kind) {
+    if (!uploadStatusEl) return;
+    uploadStatusEl.textContent = message || "";
+    uploadStatusEl.classList.remove("success", "error", "working");
+    if (kind) {
+      uploadStatusEl.classList.add(kind);
+    }
+  }
+
+  function isAbsoluteUrl(value) {
+    return /^https?:\/\//i.test(value || "");
+  }
+
+  function resolveTabFileUrl(filePath) {
+    if (!filePath) return "";
+    if (isAbsoluteUrl(filePath)) return filePath;
+
+    const base = fileBaseUrl || window.location.origin;
+
+    try {
+      return new URL(filePath, base).toString();
+    } catch (err) {
+      console.warn("Unable to resolve tab file URL:", filePath, err);
+      return filePath;
+    }
+  }
+
+  function normalizeTabItem(item) {
+    return {
+      title: item && item.title ? item.title : "Untitled tab",
+      file: resolveTabFileUrl(item && item.file ? item.file : "")
+    };
+  }
+
   function formatTime(seconds) {
     if (!isFinite(seconds) || seconds < 0) return "00:00";
     const s = Math.floor(seconds);
@@ -270,18 +319,81 @@ noindex: true
     refreshViewerLayout();
   }
 
-  function loadIndex() {
-    fetch('{{ "/assets/data/tabs.json" | relative_url }}', { cache: "no-store" })
-      .then(r => r.json())
-      .then(data => {
-        allTabs = data;
+  async function loadIndex() {
+    const sources = [];
+    if (primaryIndexUrl) sources.push(primaryIndexUrl);
+    if (fallbackIndexUrl && fallbackIndexUrl !== primaryIndexUrl) {
+      sources.push(fallbackIndexUrl);
+    }
+
+    let lastError = null;
+
+    for (const sourceUrl of sources) {
+      try {
+        const response = await fetch(sourceUrl, {
+          cache: "no-store",
+          mode: isAbsoluteUrl(sourceUrl) ? "cors" : "same-origin"
+        });
+
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+
+        const data = await response.json();
+        allTabs = data.map(normalizeTabItem);
         filteredTabs = allTabs.slice();
         applyFiltersAndRender();
-      })
-      .catch(err => {
-        console.error("Error loading tabs index:", err);
-        listEl.textContent = "Failed to load tab index.";
+        return;
+      } catch (err) {
+        lastError = err;
+        console.warn("Error loading tabs index from", sourceUrl, err);
+      }
+    }
+
+    console.error("Failed to load any tabs index.", lastError);
+    listEl.textContent = "Failed to load tab index.";
+  }
+
+  async function uploadTab() {
+    if (!uploadInput || !uploadInput.files || uploadInput.files.length === 0) {
+      setUploadStatus("", "");
+      return;
+    }
+
+    const file = uploadInput.files[0];
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+
+    if (uploadBtn) uploadBtn.disabled = true;
+    setUploadStatus("Uploading...", "working");
+
+    try {
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        body: formData
       });
+      const payload = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(payload.error || ("Upload failed with HTTP " + response.status));
+      }
+
+      setUploadStatus(payload.message || "Upload complete.", "success");
+      uploadInput.value = "";
+      await loadIndex();
+
+      if (payload.file) {
+        const uploadedItem = normalizeTabItem({
+          title: payload.title || file.name,
+          file: payload.file
+        });
+        loadTab(uploadedItem);
+      }
+    } catch (err) {
+      setUploadStatus(err.message || "Upload failed.", "error");
+    } finally {
+      if (uploadBtn) uploadBtn.disabled = false;
+    }
   }
 
   function applyFiltersAndRender() {
@@ -906,6 +1018,19 @@ noindex: true
       renderPage();
     }
   });
+
+  if (uploadBtn) {
+    uploadBtn.addEventListener("click", function() {
+      if (uploadBtn.disabled || !uploadInput) return;
+      uploadInput.click();
+    });
+  }
+
+  if (uploadInput) {
+    uploadInput.addEventListener("change", function() {
+      uploadTab();
+    });
+  }
 
   document.addEventListener("DOMContentLoaded", loadIndex);
 })();

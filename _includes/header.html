@@ -5,10 +5,9 @@
       <li><a href="{{ "/posts/" | relative_url }}">Posts</a></li>
       <li><a href="{{ "/recipes/" | relative_url }}">Recipes</a></li>
       <li><a href="{{ "/plant-control/" | relative_url }}">Plants</a></li>
-      <li><a href="{{ "/tabs/" | relative_url }}">Tabs</a></li>
+      <li><a href="{{ site.tabs_nav_url | default: "/tabs/" }}">Tabs</a></li>
       <li><a href="https://matomo.retroterminal.net" target="_blank" rel="noopener">Matomo</a></li>
       <li><a href="{{ "/about/" | relative_url }}">About</a></li>
     </ul>
   </nav>
 </header>
-
