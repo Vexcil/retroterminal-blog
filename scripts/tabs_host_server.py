@@ -13,7 +13,7 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from xml.etree import ElementTree
-from urllib.parse import unquote
+from urllib.parse import parse_qs, unquote, urlparse
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT) not in sys.path:
@@ -31,7 +31,19 @@ GP_SIGNATURES = (
     b"FICHIER GUITARE PRO",
     b"FILE GUITAR PRO",
 )
+BLOCKED_FILE_SIGNATURES = (
+    (b"MZ", "Windows executable"),
+    (b"\x7fELF", "Linux executable"),
+    (b"PK\x03\x04", "ZIP archive"),
+    (b"%PDF-", "PDF document"),
+    (b"\x89PNG\r\n\x1a\n", "PNG image"),
+    (b"GIF87a", "GIF image"),
+    (b"GIF89a", "GIF image"),
+    (b"\xff\xd8\xff", "JPEG image"),
+)
 SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._()' +,-]+")
+DEFAULT_PAGE_SIZE = 50
+MAX_PAGE_SIZE = 200
 
 
 def parse_args():
@@ -49,6 +61,9 @@ def parse_args():
 class TabsHostHandler(SimpleHTTPRequestHandler):
     server_version = "RetroTerminalTabs/1.0"
     upload_lock = threading.Lock()
+    index_lock = threading.Lock()
+    index_cache = None
+    index_cache_mtime = None
 
     def __init__(self, *args, data_dir, files_dir, allow_origin, viewer_url, url_prefix, **kwargs):
         self.data_dir = Path(data_dir).resolve()
@@ -71,21 +86,26 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):
-        if self.path in {"", "/"}:
+        parsed = urlparse(self.path)
+
+        if parsed.path in {"", "/"}:
             self.send_response(HTTPStatus.FOUND)
             self.send_header("Location", self.viewer_url)
             self.end_headers()
             return
 
-        if self.path == "/data/tabs.json":
+        if parsed.path == "/data/tabs.json":
             return self.serve_file(self.data_dir / "tabs.json", cache_control="no-store")
 
-        if self.path == "/healthz":
+        if parsed.path == "/api/tabs":
+            return self.serve_tabs_page(parsed.query)
+
+        if parsed.path == "/healthz":
             return self.send_json(HTTPStatus.OK, {"ok": True})
 
-        if self.path.startswith("/files/"):
+        if parsed.path.startswith("/files/"):
             try:
-                relative_path = unquote(self.path[len("/files/"):]).lstrip("/")
+                relative_path = unquote(parsed.path[len("/files/"):]).lstrip("/")
                 return self.serve_file(
                     self.safe_join(self.files_dir, relative_path),
                     cache_control="public, max-age=300",
@@ -97,7 +117,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
     def do_POST(self):
-        if self.path != "/upload":
+        if urlparse(self.path).path != "/upload":
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
 
@@ -138,18 +158,23 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": f"Upload failed: {err}"})
 
     def do_HEAD(self):
-        if self.path in {"", "/"}:
+        parsed = urlparse(self.path)
+
+        if parsed.path in {"", "/"}:
             self.send_response(HTTPStatus.FOUND)
             self.send_header("Location", self.viewer_url)
             self.end_headers()
             return
 
-        if self.path == "/data/tabs.json":
+        if parsed.path == "/data/tabs.json":
             return self.serve_file(self.data_dir / "tabs.json", head_only=True, cache_control="no-store")
 
-        if self.path.startswith("/files/"):
+        if parsed.path == "/api/tabs":
+            return self.serve_tabs_page(parsed.query, head_only=True)
+
+        if parsed.path.startswith("/files/"):
             try:
-                relative_path = unquote(self.path[len("/files/"):]).lstrip("/")
+                relative_path = unquote(parsed.path[len("/files/"):]).lstrip("/")
                 return self.serve_file(
                     self.safe_join(self.files_dir, relative_path),
                     head_only=True,
@@ -199,6 +224,83 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def send_json_body(self, status: int, payload: dict, head_only: bool = False):
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        if not head_only:
+            self.wfile.write(body)
+
+    def serve_tabs_page(self, query: str, head_only: bool = False):
+        params = parse_qs(query, keep_blank_values=True)
+        page = self.parse_positive_int(params.get("page", ["1"])[0], default=1)
+        page_size = self.parse_positive_int(
+            params.get("page_size", [str(DEFAULT_PAGE_SIZE)])[0],
+            default=DEFAULT_PAGE_SIZE,
+            maximum=MAX_PAGE_SIZE,
+        )
+        search = (params.get("search", [""])[0] or "").strip().lower()
+        sort = (params.get("sort", ["title-asc"])[0] or "title-asc").strip()
+
+        entries = self.get_index_entries()
+        if search:
+            entries = [item for item in entries if search in item["title"].lower()]
+
+        reverse = sort == "title-desc"
+        entries = sorted(entries, key=lambda item: item["title"].lower(), reverse=reverse)
+
+        total = len(entries)
+        max_page = max(1, (total + page_size - 1) // page_size)
+        page = min(page, max_page)
+        start = (page - 1) * page_size
+        end = start + page_size
+        items = entries[start:end]
+
+        return self.send_json_body(
+            HTTPStatus.OK,
+            {
+                "items": items,
+                "page": page,
+                "page_size": page_size,
+                "total": total,
+                "has_more": page < max_page,
+                "sort": sort,
+                "search": search,
+            },
+            head_only=head_only,
+        )
+
+    def parse_positive_int(self, value: str, default: int, maximum: int | None = None):
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            parsed = default
+        if parsed < 1:
+            parsed = default
+        if maximum is not None:
+            parsed = min(parsed, maximum)
+        return parsed
+
+    def get_index_entries(self):
+        output_path = self.data_dir / "tabs.json"
+        if not output_path.exists():
+            return []
+
+        current_mtime = output_path.stat().st_mtime_ns
+        with self.index_lock:
+            if self.index_cache is not None and self.index_cache_mtime == current_mtime:
+                return self.index_cache
+
+            with output_path.open("r", encoding="utf-8") as handle:
+                loaded = json.load(handle)
+
+            self.index_cache = loaded
+            self.index_cache_mtime = current_mtime
+            return loaded
 
     def parse_upload(self):
         content_type = self.headers.get("Content-Type", "")
@@ -268,13 +370,50 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             raise ValueError("Zip-based tab file is invalid.")
 
     def validate_gp_binary(self, filename: str, file_data: bytes):
-        header = file_data[:128]
+        header = file_data[:2048]
         if len(header) < 16:
             raise ValueError("Binary tab file is too small.")
-        if b"<html" in header.lower() or header.startswith(b"MZ") or header.startswith(b"\x7fELF"):
-            raise ValueError("Upload does not look like a supported tab file.")
+        header_lower = header.lower()
+        if b"<html" in header_lower or b"<!doctype html" in header_lower or b"<script" in header_lower:
+            raise ValueError("Upload looks like HTML, not a Guitar Pro file.")
+        if header.startswith(b"#!"):
+            raise ValueError("Upload looks like a script, not a Guitar Pro file.")
+        if header.startswith(b"PK\x03\x04"):
+            if self.is_valid_zip_upload(file_data):
+                return
+            raise ValueError(f"{filename} is a zip container, but it is not a valid tab archive.")
+        for signature, description in BLOCKED_FILE_SIGNATURES:
+            if header.startswith(signature):
+                raise ValueError(f"Upload looks like a {description}, not a Guitar Pro file.")
         if not any(signature in header for signature in GP_SIGNATURES):
-            raise ValueError(f"{filename} does not match an expected Guitar Pro file signature.")
+            if self.looks_like_plain_text(file_data):
+                raise ValueError(f"{filename} looks like plain text, not a Guitar Pro binary file.")
+
+    def looks_like_plain_text(self, file_data: bytes):
+        sample = file_data[:4096]
+        if not sample:
+            return False
+        if b"\x00" in sample:
+            return False
+        text_bytes = sum(
+            1 for byte in sample
+            if byte in (9, 10, 13) or 32 <= byte <= 126
+        )
+        return text_bytes / len(sample) > 0.95
+
+    def is_valid_zip_upload(self, file_data: bytes):
+        try:
+            with zipfile.ZipFile(self.bytes_as_file(file_data)) as archive:
+                names = archive.namelist()
+                if not names:
+                    return False
+                for name in names:
+                    normalized = name.replace("\\", "/")
+                    if normalized.startswith("/") or ".." in normalized.split("/"):
+                        return False
+                return True
+        except zipfile.BadZipFile:
+            return False
 
     def bytes_as_file(self, file_data: bytes):
         import io
@@ -300,6 +439,9 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with output_path.open("w", encoding="utf-8") as handle:
             json.dump(entries, handle, ensure_ascii=False, indent=2)
+        with self.index_lock:
+            self.index_cache = entries
+            self.index_cache_mtime = output_path.stat().st_mtime_ns
 
     def make_public_file_url(self, destination: Path) -> str:
         rel_path = destination.relative_to(self.files_dir).as_posix()

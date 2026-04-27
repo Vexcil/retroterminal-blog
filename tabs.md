@@ -168,8 +168,8 @@ noindex: true
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
 <script>
 (function() {
-  // show ~30 per page, rest via pagination
-  const PAGE_SIZE = 30;
+  const PAGE_SIZE = 50;
+  const primaryApiUrl = {{ site.tabs_api_url | default: "https://tabs.retroterminal.net/api/tabs" | jsonify }};
   const primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
   const fallbackIndexUrl = {{ "/assets/data/tabs.json" | relative_url | jsonify }};
   const fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
@@ -178,6 +178,9 @@ noindex: true
   let allTabs = [];
   let filteredTabs = [];
   let currentPage = 1;
+  let totalTabs = 0;
+  let useRemoteApi = false;
+  let searchDebounce = null;
 
   const searchInput        = document.getElementById('tab-search');
   const sortSelect         = document.getElementById('tab-sort');
@@ -286,6 +289,15 @@ noindex: true
     }
   }
 
+  function buildApiUrl(page) {
+    const url = new URL(primaryApiUrl, window.location.origin);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("page_size", String(PAGE_SIZE));
+    url.searchParams.set("sort", sortSelect.value || "title-asc");
+    url.searchParams.set("search", searchInput.value || "");
+    return url.toString();
+  }
+
   function formatTime(seconds) {
     if (!isFinite(seconds) || seconds < 0) return "00:00";
     const s = Math.floor(seconds);
@@ -334,6 +346,17 @@ noindex: true
   }
 
   async function loadIndex() {
+    if (primaryApiUrl) {
+      try {
+        useRemoteApi = true;
+        await fetchRemotePage(1);
+        return;
+      } catch (err) {
+        useRemoteApi = false;
+        console.warn("Remote tabs API unavailable, falling back to static index.", err);
+      }
+    }
+
     const sources = [];
     if (primaryIndexUrl) sources.push(primaryIndexUrl);
     if (fallbackIndexUrl && fallbackIndexUrl !== primaryIndexUrl) {
@@ -355,6 +378,7 @@ noindex: true
 
         const data = await response.json();
         allTabs = data.map(normalizeTabItem);
+        totalTabs = allTabs.length;
         filteredTabs = allTabs.slice();
         applyFiltersAndRender();
         return;
@@ -366,6 +390,23 @@ noindex: true
 
     console.error("Failed to load any tabs index.", lastError);
     listEl.textContent = "Failed to load tab index.";
+  }
+
+  async function fetchRemotePage(page) {
+    const response = await fetch(buildApiUrl(page), {
+      cache: "no-store",
+      mode: "cors"
+    });
+
+    if (!response.ok) {
+      throw new Error("HTTP " + response.status);
+    }
+
+    const payload = await response.json();
+    filteredTabs = (payload.items || []).map(normalizeTabItem);
+    totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
+    currentPage = typeof payload.page === "number" ? payload.page : page;
+    renderPage();
   }
 
   async function uploadTab() {
@@ -400,8 +441,13 @@ noindex: true
           title: payload.title || file.name,
           file: payload.file
         });
-        upsertTabItem(uploadedItem);
-        applyFiltersAndRender();
+        if (useRemoteApi) {
+          await fetchRemotePage(currentPage);
+        } else {
+          upsertTabItem(uploadedItem);
+          totalTabs = allTabs.length;
+          applyFiltersAndRender();
+        }
         loadTab(uploadedItem);
       }
     } catch (err) {
@@ -412,6 +458,14 @@ noindex: true
   }
 
   function applyFiltersAndRender() {
+    if (useRemoteApi) {
+      fetchRemotePage(1).catch(function(err) {
+        console.error("Failed to fetch remote tabs page:", err);
+        listEl.textContent = "Failed to load tabs.";
+      });
+      return;
+    }
+
     const q = (searchInput.value || "").toLowerCase();
 
     filteredTabs = allTabs.filter(item =>
@@ -429,6 +483,7 @@ noindex: true
 
     const maxPage = Math.max(1, Math.ceil(filteredTabs.length / PAGE_SIZE));
     if (currentPage > maxPage) currentPage = maxPage;
+    totalTabs = filteredTabs.length;
 
     renderPage();
   }
@@ -439,13 +494,15 @@ noindex: true
     if (filteredTabs.length === 0) {
       listEl.textContent = "No tabs found.";
       pageInfoEl.textContent = "";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
       return;
     }
 
-    const maxPage = Math.max(1, Math.ceil(filteredTabs.length / PAGE_SIZE));
-    const start   = (currentPage - 1) * PAGE_SIZE;
-    const end     = Math.min(start + PAGE_SIZE, filteredTabs.length);
-    const slice   = filteredTabs.slice(start, end);
+    const maxPage = Math.max(1, Math.ceil(totalTabs / PAGE_SIZE));
+    const start   = useRemoteApi ? 0 : (currentPage - 1) * PAGE_SIZE;
+    const end     = useRemoteApi ? filteredTabs.length : Math.min(start + PAGE_SIZE, filteredTabs.length);
+    const slice   = useRemoteApi ? filteredTabs : filteredTabs.slice(start, end);
 
     const ul = document.createElement("ul");
     ul.className = "tab-list-ul";
@@ -1011,6 +1068,13 @@ noindex: true
   // Search / sort / paginate wiring
   searchInput.addEventListener("input", function() {
     currentPage = 1;
+    if (useRemoteApi) {
+      window.clearTimeout(searchDebounce);
+      searchDebounce = window.setTimeout(function() {
+        applyFiltersAndRender();
+      }, 200);
+      return;
+    }
     applyFiltersAndRender();
   });
 
@@ -1021,14 +1085,26 @@ noindex: true
 
   prevBtn.addEventListener("click", function() {
     if (currentPage > 1) {
+      if (useRemoteApi) {
+        fetchRemotePage(currentPage - 1).catch(function(err) {
+          console.error("Failed to fetch previous tabs page:", err);
+        });
+        return;
+      }
       currentPage--;
       renderPage();
     }
   });
 
   nextBtn.addEventListener("click", function() {
-    const maxPage = Math.max(1, Math.ceil(filteredTabs.length / PAGE_SIZE));
+    const maxPage = Math.max(1, Math.ceil(totalTabs / PAGE_SIZE));
     if (currentPage < maxPage) {
+      if (useRemoteApi) {
+        fetchRemotePage(currentPage + 1).catch(function(err) {
+          console.error("Failed to fetch next tabs page:", err);
+        });
+        return;
+      }
       currentPage++;
       renderPage();
     }
