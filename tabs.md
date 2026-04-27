@@ -5,14 +5,31 @@ permalink: /tabs/
 noindex: true
 ---
 
+<style>
+  #tab-sort,
+  #tab-folder {
+    width: auto;
+    min-width: 180px;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+
+  @media (max-width: 600px) {
+    #tab-sort,
+    #tab-folder {
+      width: 100%;
+    }
+  }
+</style>
+
 <div class="tabs-page">
   <div class="tabs-controls">
     <input type="text" id="tab-search" placeholder="Search by title..." />
     <select id="tab-sort">
+      <option value="recent" selected>Most Recent</option>
+      <option value="played">Most Played</option>
       <option value="title-asc">Title A to Z</option>
       <option value="title-desc">Title Z to A</option>
-      <option value="recent">Most Recent</option>
-      <option value="played">Most Played</option>
     </select>
     <select id="tab-folder">
       <option value="">All folders</option>
