@@ -3,6 +3,7 @@ description: CRT-styled blog
 url: https://retroterminal.net
 tabs_nav_url: /tabs/
 tabs_api_url: https://tabs.retroterminal.net/api/tabs
+tabs_play_api_url: https://tabs.retroterminal.net/api/play
 tabs_index_url: https://tabs.retroterminal.net/data/tabs.json
 tabs_file_base_url: https://tabs.retroterminal.net
 tabs_upload_url: https://tabs.retroterminal.net/upload

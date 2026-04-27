@@ -44,6 +44,8 @@ BLOCKED_FILE_SIGNATURES = (
 SAFE_NAME_RE = re.compile(r"[^A-Za-z0-9._()' +,-]+")
 DEFAULT_PAGE_SIZE = 50
 MAX_PAGE_SIZE = 200
+DEFAULT_SORT = "title-asc"
+VALID_SORTS = {"title-asc", "title-desc", "recent", "played"}
 
 
 def parse_args():
@@ -55,6 +57,7 @@ def parse_args():
     parser.add_argument("--allow-origin", default="https://retroterminal.net")
     parser.add_argument("--viewer-url", default="https://retroterminal.net/tabs/")
     parser.add_argument("--url-prefix", default="/files")
+    parser.add_argument("--play-counts-file", default="/home/vex/tabs-host/data/play-counts.json")
     return parser.parse_args()
 
 
@@ -64,13 +67,27 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
     index_lock = threading.Lock()
     index_cache = None
     index_cache_mtime = None
+    play_counts_lock = threading.Lock()
+    play_counts_cache = None
+    play_counts_mtime = None
 
-    def __init__(self, *args, data_dir, files_dir, allow_origin, viewer_url, url_prefix, **kwargs):
+    def __init__(
+        self,
+        *args,
+        data_dir,
+        files_dir,
+        allow_origin,
+        viewer_url,
+        url_prefix,
+        play_counts_file,
+        **kwargs,
+    ):
         self.data_dir = Path(data_dir).resolve()
         self.files_dir = Path(files_dir).resolve()
         self.allow_origin = allow_origin
         self.viewer_url = viewer_url
         self.url_prefix = normalize_url_prefix(url_prefix)
+        self.play_counts_file = Path(play_counts_file).resolve()
         super().__init__(*args, **kwargs)
 
     def end_headers(self):
@@ -118,6 +135,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         if urlparse(self.path).path != "/upload":
+            if urlparse(self.path).path == "/api/play":
+                return self.record_play()
             self.send_error(HTTPStatus.NOT_FOUND, "Not found")
             return
 
@@ -244,14 +263,19 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             maximum=MAX_PAGE_SIZE,
         )
         search = (params.get("search", [""])[0] or "").strip().lower()
-        sort = (params.get("sort", ["title-asc"])[0] or "title-asc").strip()
+        sort = (params.get("sort", [DEFAULT_SORT])[0] or DEFAULT_SORT).strip()
+        if sort not in VALID_SORTS:
+            sort = DEFAULT_SORT
+        folder = (params.get("folder", [""])[0] or "").strip()
 
-        entries = self.get_index_entries()
+        entries = self.get_enriched_entries()
         if search:
             entries = [item for item in entries if search in item["title"].lower()]
+        if folder:
+            entries = [item for item in entries if item.get("folder") == folder]
 
-        reverse = sort == "title-desc"
-        entries = sorted(entries, key=lambda item: item["title"].lower(), reverse=reverse)
+        entries = self.sort_entries(entries, sort)
+        folders = self.get_folder_options()
 
         total = len(entries)
         max_page = max(1, (total + page_size - 1) // page_size)
@@ -270,6 +294,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 "has_more": page < max_page,
                 "sort": sort,
                 "search": search,
+                "folder": folder,
+                "folders": folders,
             },
             head_only=head_only,
         )
@@ -301,6 +327,67 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             self.index_cache = loaded
             self.index_cache_mtime = current_mtime
             return loaded
+
+    def get_play_counts(self):
+        with self.play_counts_lock:
+            return self._get_play_counts_locked()
+
+    def _get_play_counts_locked(self):
+        if not self.play_counts_file.exists():
+            return {}
+
+        current_mtime = self.play_counts_file.stat().st_mtime_ns
+        if self.play_counts_cache is not None and self.play_counts_mtime == current_mtime:
+            return self.play_counts_cache
+
+        with self.play_counts_file.open("r", encoding="utf-8") as handle:
+            loaded = json.load(handle)
+
+        normalized = {}
+        for raw_key, raw_value in loaded.items():
+            key = self.normalize_file_key(raw_key)
+            if not key:
+                continue
+            normalized[key] = int(normalized.get(key, 0)) + int(raw_value)
+
+        self.play_counts_cache = normalized
+        self.play_counts_mtime = current_mtime
+        return normalized
+
+    def save_play_counts(self, counts: dict):
+        self.play_counts_file.parent.mkdir(parents=True, exist_ok=True)
+        with self.play_counts_file.open("w", encoding="utf-8") as handle:
+            json.dump(counts, handle, ensure_ascii=False, indent=2)
+        self.play_counts_cache = counts
+        self.play_counts_mtime = self.play_counts_file.stat().st_mtime_ns
+
+    def get_enriched_entries(self):
+        counts = self.get_play_counts()
+        entries = []
+        for item in self.get_index_entries():
+            enriched = dict(item)
+            enriched["play_count"] = int(counts.get(self.normalize_file_key(item["file"]), 0))
+            entries.append(enriched)
+        return entries
+
+    def get_folder_options(self):
+        folders = sorted({item.get("folder", "Root") for item in self.get_index_entries()})
+        return folders
+
+    def sort_entries(self, entries, sort: str):
+        if sort == "title-desc":
+            return sorted(entries, key=lambda item: item["title"].lower(), reverse=True)
+        if sort == "recent":
+            return sorted(
+                entries,
+                key=lambda item: (-int(item.get("modified_at", 0)), item["title"].lower()),
+            )
+        if sort == "played":
+            return sorted(
+                entries,
+                key=lambda item: (-int(item.get("play_count", 0)), item["title"].lower()),
+            )
+        return sorted(entries, key=lambda item: item["title"].lower())
 
     def parse_upload(self):
         content_type = self.headers.get("Content-Type", "")
@@ -343,6 +430,40 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
         stem = Path(cleaned).stem[:120].strip() or "tab"
         return f"{stem}{suffix}"
+
+    def record_play(self):
+        content_length = int(self.headers.get("Content-Length", "0") or "0")
+        if content_length <= 0 or content_length > 4096:
+            return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid play payload."})
+
+        try:
+            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Invalid JSON payload."})
+
+        file_url = (payload.get("file") or "").strip()
+        file_key = self.normalize_file_key(file_url)
+        if not file_key:
+            return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Missing file value."})
+
+        valid_files = {self.normalize_file_key(item["file"]) for item in self.get_index_entries()}
+        if file_key not in valid_files:
+            return self.send_json(HTTPStatus.BAD_REQUEST, {"error": "Unknown tab file."})
+
+        with self.play_counts_lock:
+            counts = dict(self._get_play_counts_locked())
+            counts[file_key] = int(counts.get(file_key, 0)) + 1
+            self.save_play_counts(counts)
+
+        return self.send_json(HTTPStatus.OK, {"ok": True, "file": file_url, "play_count": counts[file_key]})
+
+    def normalize_file_key(self, file_url: str):
+        if not file_url:
+            return ""
+        parsed = urlparse(file_url)
+        if parsed.scheme or parsed.netloc:
+            return parsed.path or ""
+        return file_url
 
     def validate_upload(self, filename: str, suffix: str, file_data: bytes):
         if suffix in SAFE_XML_EXTS:
@@ -457,6 +578,7 @@ def main():
         allow_origin=args.allow_origin,
         viewer_url=args.viewer_url,
         url_prefix=args.url_prefix,
+        play_counts_file=args.play_counts_file,
     )
     server = ThreadingHTTPServer((args.host, args.port), handler)
     print(f"Serving tabs host on http://{args.host}:{args.port}")

@@ -11,6 +11,11 @@ noindex: true
     <select id="tab-sort">
       <option value="title-asc">Title A to Z</option>
       <option value="title-desc">Title Z to A</option>
+      <option value="recent">Most Recent</option>
+      <option value="played">Most Played</option>
+    </select>
+    <select id="tab-folder">
+      <option value="">All folders</option>
     </select>
     <button type="button" id="tab-upload-button">Upload</button>
     <input
@@ -170,6 +175,7 @@ noindex: true
 (function() {
   const PAGE_SIZE = 50;
   const primaryApiUrl = {{ site.tabs_api_url | default: "https://tabs.retroterminal.net/api/tabs" | jsonify }};
+  const playApiUrl = {{ site.tabs_play_api_url | default: "https://tabs.retroterminal.net/api/play" | jsonify }};
   const primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
   const fallbackIndexUrl = {{ "/assets/data/tabs.json" | relative_url | jsonify }};
   const fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
@@ -184,6 +190,7 @@ noindex: true
 
   const searchInput        = document.getElementById('tab-search');
   const sortSelect         = document.getElementById('tab-sort');
+  const folderSelect       = document.getElementById('tab-folder');
   const listEl             = document.getElementById('tab-list');
   const pageInfoEl         = document.getElementById('tab-page-info');
   const prevBtn            = document.getElementById('tab-prev');
@@ -223,6 +230,7 @@ noindex: true
   let alphaApi       = null;
   let currentScore   = null;
   let currentTabItem = null;
+  let currentTabPlayReported = false;
 
   const uiState = {
     countIn: false,
@@ -271,7 +279,11 @@ noindex: true
   function normalizeTabItem(item) {
     return {
       title: item && item.title ? item.title : "Untitled tab",
-      file: resolveTabFileUrl(item && item.file ? item.file : "")
+      file: resolveTabFileUrl(item && item.file ? item.file : ""),
+      folder: item && item.folder ? item.folder : "Root",
+      folder_path: item && item.folder_path ? item.folder_path : "",
+      modified_at: item && item.modified_at ? item.modified_at : 0,
+      play_count: item && item.play_count ? item.play_count : 0
     };
   }
 
@@ -295,7 +307,27 @@ noindex: true
     url.searchParams.set("page_size", String(PAGE_SIZE));
     url.searchParams.set("sort", sortSelect.value || "title-asc");
     url.searchParams.set("search", searchInput.value || "");
+    url.searchParams.set("folder", folderSelect.value || "");
     return url.toString();
+  }
+
+  function syncFolderOptions(folders) {
+    if (!folderSelect || !Array.isArray(folders) || folders.length === 0) return;
+
+    const selected = folderSelect.value || "";
+    const options = ['<option value="">All folders</option>'].concat(
+      folders.map(function(folder) {
+        const escaped = String(folder)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;");
+        return '<option value="' + escaped + '">' + escaped + '</option>';
+      })
+    );
+
+    folderSelect.innerHTML = options.join("");
+    folderSelect.value = folders.includes(selected) ? selected : "";
   }
 
   function formatTime(seconds) {
@@ -379,6 +411,9 @@ noindex: true
         const data = await response.json();
         allTabs = data.map(normalizeTabItem);
         totalTabs = allTabs.length;
+        syncFolderOptions(
+          Array.from(new Set(allTabs.map(function(item) { return item.folder; }))).sort()
+        );
         filteredTabs = allTabs.slice();
         applyFiltersAndRender();
         return;
@@ -406,6 +441,7 @@ noindex: true
     filteredTabs = (payload.items || []).map(normalizeTabItem);
     totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
     currentPage = typeof payload.page === "number" ? payload.page : page;
+    syncFolderOptions(payload.folders || []);
     renderPage();
   }
 
@@ -467,15 +503,30 @@ noindex: true
     }
 
     const q = (searchInput.value || "").toLowerCase();
+    const folder = folderSelect ? (folderSelect.value || "") : "";
 
     filteredTabs = allTabs.filter(item =>
-      item.title.toLowerCase().includes(q)
+      item.title.toLowerCase().includes(q) &&
+      (!folder || item.folder === folder)
     );
 
     const sortVal = sortSelect.value;
     filteredTabs.sort((a, b) => {
+      if (sortVal === "recent") {
+        const delta = (b.modified_at || 0) - (a.modified_at || 0);
+        if (delta !== 0) return delta;
+      }
+      if (sortVal === "played") {
+        const delta = (b.play_count || 0) - (a.play_count || 0);
+        if (delta !== 0) return delta;
+      }
       const ta = a.title.toLowerCase();
       const tb = b.title.toLowerCase();
+      if (sortVal !== "title-desc") {
+        if (ta < tb) return -1;
+        if (ta > tb) return 1;
+        return 0;
+      }
       if (ta < tb) return sortVal === "title-asc" ? -1 : 1;
       if (ta > tb) return sortVal === "title-asc" ?  1 : -1;
       return 0;
@@ -514,6 +565,7 @@ noindex: true
       const titleSpan = document.createElement("span");
       titleSpan.className = "tab-title";
       titleSpan.textContent = item.title;
+      titleSpan.title = item.folder_path || item.folder || item.title;
 
       const btn = document.createElement("button");
       btn.textContent = "View";
@@ -852,10 +904,28 @@ noindex: true
 
   function loadTab(item) {
     currentTabItem = item;
+    currentTabPlayReported = false;
     currentTitleEl.textContent = item.title;
     if (songTitleEl) songTitleEl.textContent = item.title || "Loading...";
     if (songArtistEl) songArtistEl.textContent = "Loading...";
     createAlphaTab(item);
+  }
+
+  function reportPlay(item) {
+    if (!item || !item.file || currentTabPlayReported) return;
+    currentTabPlayReported = true;
+
+    fetch(playApiUrl, {
+      method: "POST",
+      mode: "cors",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ file: item.file })
+    }).catch(function(err) {
+      console.warn("Failed to report play:", err);
+      currentTabPlayReported = false;
+    });
   }
 
   // Sidebar toggle (collapsed by default)
@@ -894,6 +964,10 @@ noindex: true
   if (playBtn) {
     playBtn.addEventListener("click", function() {
       if (!alphaApi) return;
+      const shouldReportPlay = playBtn.textContent !== "Pause";
+      if (shouldReportPlay && currentTabItem) {
+        reportPlay(currentTabItem);
+      }
       try {
         alphaApi.playPause();
       } catch (err) {
@@ -1082,6 +1156,13 @@ noindex: true
     currentPage = 1;
     applyFiltersAndRender();
   });
+
+  if (folderSelect) {
+    folderSelect.addEventListener("change", function() {
+      currentPage = 1;
+      applyFiltersAndRender();
+    });
+  }
 
   prevBtn.addEventListener("click", function() {
     if (currentPage > 1) {

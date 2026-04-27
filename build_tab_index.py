@@ -70,6 +70,14 @@ def should_skip_file(filename: str) -> bool:
     return filename.startswith(".") or filename.startswith("._")
 
 
+def get_folder_info(relative_path: str):
+    path_parts = Path(relative_path).parts
+    folder = path_parts[0] if len(path_parts) > 1 else "Root"
+    parent = Path(relative_path).parent
+    folder_path = "" if str(parent) == "." else str(parent).replace(os.sep, "/")
+    return folder, folder_path
+
+
 def build_entries(tabs_dir: str, url_prefix: str, file_base_url: str):
     entries = []
     tabs_root = Path(tabs_dir).resolve()
@@ -91,11 +99,18 @@ def build_entries(tabs_dir: str, url_prefix: str, file_base_url: str):
 
             full_path = Path(root) / filename
             rel_path = os.path.relpath(full_path, tabs_root)
+            folder, folder_path = get_folder_info(rel_path)
+            stat = full_path.stat()
 
             entries.append(
                 {
                     "title": make_title_from_filename(filename),
                     "file": make_file_url(rel_path, url_prefix, file_base_url),
+                    "filename": filename,
+                    "path": rel_path.replace(os.sep, "/"),
+                    "folder": folder,
+                    "folder_path": folder_path,
+                    "modified_at": int(stat.st_mtime),
                 }
             )
 
