@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="${REPO_DIR:-/home/vex/retroterminal-blog}"
-TABS_SOURCE_DIR="${TABS_SOURCE_DIR:-$REPO_DIR/assets/tabs}"
+TABS_SOURCE_DIR="${TABS_SOURCE_DIR:-/home/vex/tabs-archive}"
 TABS_HOST_ROOT="${TABS_HOST_ROOT:-/home/vex/tabs-host}"
 TABS_DATA_DIR="${TABS_DATA_DIR:-$TABS_HOST_ROOT/data}"
 TABS_PUBLIC_ORIGIN="${TABS_PUBLIC_ORIGIN:-https://tabs.retroterminal.net}"

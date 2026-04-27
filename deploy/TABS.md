@@ -12,8 +12,8 @@ This keeps the tab viewer UI in the GitHub/Jekyll site while moving the archive 
 
 ## What Changed
 
-- `tabs.md` now prefers `https://tabs.retroterminal.net/data/tabs.json`
-- if the subdomain is unavailable, it falls back to the in-repo `assets/data/tabs.json`
+- `tabs.md` now uses `https://tabs.retroterminal.net/data/tabs.json`
+- the site no longer serves an in-repo `assets/data/tabs.json` fallback
 - the header `Tabs` link is now configurable with `tabs_nav_url`
 - `build_tab_index.py` can build either local or hosted URLs
 - `scripts/tabs_host_server.py` serves `/data/tabs.json` and `/files/...` from this server
@@ -32,7 +32,7 @@ Before The-MainFrame comes online, you can seed the hosted JSON from the repo co
 
 ```bash
 cd /home/vex/retroterminal-blog
-TABS_SOURCE_DIR=/home/vex/retroterminal-blog/assets/tabs ./scripts/build_tabs_host.sh
+TABS_SOURCE_DIR=/home/vex/tabs-archive ./scripts/build_tabs_host.sh
 ```
 
 If you want to start using a dedicated local archive immediately:
