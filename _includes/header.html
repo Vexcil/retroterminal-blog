@@ -1,3 +1,8 @@
+<style>
+  .nav-links .synth-nav-button { display: inline-block; padding: 0.32rem 0.78rem; border: 2px solid var(--accent); color: var(--bg); background: var(--fg); box-shadow: 0 0 0.65rem rgba(var(--fg-rgb), 0.45), inset 0 0 0.3rem rgba(var(--fg-rgb), 0.25); text-shadow: none; }
+  .nav-links .synth-nav-button::before { content: ">"; margin-right: 0.3rem; color: var(--bg); }
+  .nav-links .synth-nav-button:hover, .nav-links .synth-nav-button:focus-visible { color: var(--fg); background: var(--bg); border-color: var(--fg); outline: none; box-shadow: 0 0 0.9rem rgba(var(--fg-rgb), 0.75), inset 0 0 0.35rem rgba(var(--fg-rgb), 0.18); }
+</style>
 <header>
   <h1><a href="{{ "/" | relative_url }}">RetroTerminal</a><span class="blink"></span></h1>
   <nav>
@@ -6,6 +11,7 @@
       <li><a href="{{ "/recipes/" | relative_url }}">Recipes</a></li>
       <li><a href="{{ "/plant-control/" | relative_url }}">Plants</a></li>
       <li><a href="{{ site.tabs_nav_url | default: "/tabs/" }}">Tabs</a></li>
+      <li><a class="synth-nav-button" href="https://synth.retroterminal.net">Synth</a></li>
       <li><a href="https://matomo.retroterminal.net" target="_blank" rel="noopener">Matomo</a></li>
       <li><a href="{{ "/about/" | relative_url }}">About</a></li>
     </ul>
