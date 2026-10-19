@@ -6,6 +6,18 @@ noindex: true
 ---
 
 <style>
+  /* Keep the CRT effect outside the score's thousands of SVG elements. */
+  .tabs-page #alphaTab,
+  .tabs-page #alphaTab * {
+    animation: none;
+    text-shadow: none;
+  }
+
+  /* alphaTab observes its width; animating it causes repeated score layouts. */
+  .tabs-page .tabs-viewer-shell {
+    transition: none;
+  }
+
   #tab-sort,
   #tab-folder {
     width: auto;
@@ -247,6 +259,7 @@ noindex: true
   let currentScore   = null;
   let currentTabItem = null;
   let currentTabPlayReported = false;
+  let tabLoadController = null;
 
   const uiState = {
     countIn: false,
@@ -346,9 +359,9 @@ noindex: true
     folderSelect.value = folders.includes(selected) ? selected : "";
   }
 
-  function formatTime(seconds) {
-    if (!isFinite(seconds) || seconds < 0) return "00:00";
-    const s = Math.floor(seconds);
+  function formatTime(milliseconds) {
+    if (!isFinite(milliseconds) || milliseconds < 0) return "00:00";
+    const s = Math.floor(milliseconds / 1000);
     const m = Math.floor(s / 60);
     const r = s % 60;
     return String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
@@ -360,20 +373,6 @@ noindex: true
     const artist = (score && score.artist) ? score.artist : "";
     songTitleEl.textContent = title || "Unknown title";
     songArtistEl.textContent = artist || "Unknown artist";
-  }
-
-  function refreshViewerLayout() {
-    if (!alphaApi) return;
-
-    window.requestAnimationFrame(function() {
-      window.requestAnimationFrame(function() {
-        try {
-          alphaApi.render();
-        } catch (err) {
-          console.warn("Viewer refresh unsupported:", err);
-        }
-      });
-    });
   }
 
   function setViewerExpanded(expanded) {
@@ -390,7 +389,7 @@ noindex: true
     );
     viewerExpandBtn.title = expanded ? "Collapse viewer" : "Expand viewer";
 
-    refreshViewerLayout();
+    // alphaTab's ResizeObserver handles the new width once it has changed.
   }
 
   async function loadIndex() {
@@ -852,45 +851,38 @@ noindex: true
       if (!songPositionEl || !e) return;
       const now = formatTime(e.currentTime);
       const end = formatTime(e.endTime);
-      songPositionEl.textContent = now + " / " + end;
+      const position = now + " / " + end;
+      if (songPositionEl.textContent !== position) {
+        songPositionEl.textContent = position;
+      }
     });
   }
 
-  function createAlphaTab(item) {
-    if (alphaApi) {
-      try {
-        alphaApi.stop();
-      } catch (err) {
-        console.warn("stop unsupported:", err);
-      }
-    }
-    viewerContainer.innerHTML = "";
-    currentScore = null;
-    if (playBtn) playBtn.disabled = true;
-    if (stopBtn) stopBtn.disabled = true;
-    if (playerProgressEl) playerProgressEl.textContent = "Loading 0%";
-    if (songPositionEl) songPositionEl.textContent = "00:00 / 00:00";
-
+  function createAlphaTab() {
+    if (alphaApi) return alphaApi;
     const viewportEl = document.querySelector(".at-viewport");
 
     const settings = {
-      file: item.file,
+      core: {
+        useWorkers: true,
+        enableLazyLoading: true
+      },
       display: {
-        staveProfile: "tab",
-        layoutMode: "page",        // default to vertical page layout
-        autoScroll: true,          // follow playback
-        autoScrollSmooth: true,    // smooth scrolling
-        autoScrollOffset: 0.3      // keep cursor ~30% from top
+        scale: uiState.zoom,
+        staveProfile: uiState.staveProfile,
+        layoutMode: uiState.layout
       },
       player: {
         enablePlayer: true,
-        soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@latest/dist/soundfont/sonivox.sf2",
-        scrollElement: viewportEl  // scroll the viewport, not the whole window
+        soundFont: "https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/soundfont/sonivox.sf2",
+        bufferTimeInMilliseconds: 1000,
+        scrollElement: viewportEl,
+        scrollMode: "offscreen",
+        nativeBrowserSmoothScroll: true
       }
     };
 
     alphaApi = new alphaTab.AlphaTabApi(viewerContainer, settings);
-    applyDisplaySettings();
     applyPlaybackSettings();
     wirePlayerEvents();
 
@@ -912,15 +904,51 @@ noindex: true
         }
       }
     });
+
+    alphaApi.error.on(function(error) {
+      console.error("Tab player error:", error);
+      if (playerProgressEl) playerProgressEl.textContent = "Unable to load tab.";
+    });
+    return alphaApi;
   }
 
-  function loadTab(item) {
+  async function loadTab(item) {
+    if (tabLoadController) tabLoadController.abort();
+    const controller = new AbortController();
+    tabLoadController = controller;
+    const api = createAlphaTab();
+    api.stop();
+    if (api.player) api.player.resetChannelStates();
+    currentScore = null;
+    clearTracks();
+    const viewport = document.querySelector(".at-viewport");
+    if (viewport) {
+      viewport.scrollTop = 0;
+      viewport.scrollLeft = 0;
+    }
+    if (playBtn) {
+      playBtn.disabled = true;
+      playBtn.textContent = "Play";
+    }
+    if (stopBtn) stopBtn.disabled = true;
+    if (playerProgressEl) playerProgressEl.textContent = "Loading tab...";
+    if (songPositionEl) songPositionEl.textContent = "00:00 / 00:00";
     currentTabItem = item;
     currentTabPlayReported = false;
     currentTitleEl.textContent = item.title;
     if (songTitleEl) songTitleEl.textContent = item.title || "Loading...";
     if (songArtistEl) songArtistEl.textContent = "Loading...";
-    createAlphaTab(item);
+    try {
+      const response = await fetch(item.file, { signal: controller.signal });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const data = await response.arrayBuffer();
+      if (controller.signal.aborted) return;
+      if (!api.load(data)) throw new Error("Unsupported tab file.");
+    } catch (error) {
+      if (controller.signal.aborted) return;
+      console.error("Unable to load tab:", error);
+      if (playerProgressEl) playerProgressEl.textContent = "Unable to load tab.";
+    }
   }
 
   function reportPlay(item) {
@@ -954,8 +982,13 @@ noindex: true
     });
   }
 
-  window.addEventListener("resize", function() {
-    refreshViewerLayout();
+  window.addEventListener("pagehide", function(event) {
+    if (event.persisted) return;
+    if (tabLoadController) tabLoadController.abort();
+    if (alphaApi) {
+      alphaApi.destroy();
+      alphaApi = null;
+    }
   });
 
   // "All tracks" selector

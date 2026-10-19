@@ -6,7 +6,7 @@
   <title>{{ page.title }} - {{ site.title }}</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ "/style.css" | relative_url }}">
+  <link rel="stylesheet" href="{{ "/style.css" | relative_url }}?v=20261019-static-player">
 
   <link rel="icon" href="{{ "/assets/RetroTerminalFavicon.ico" | relative_url }}" type="image/x-icon">
 
@@ -25,7 +25,7 @@
 </head>
 
 <body class="theme-green">
-  <div id="screen" class="crt crt-colorsep">
+  <div id="screen" class="crt">
     {% include header.html %}
     <main class="main-content">
       <article class="post">
@@ -82,9 +82,6 @@
       <div class="theme-dot small" data-theme="theme-pineglow" style="background:#09110c; box-shadow: inset 0 0 0 2px #4f9c60;"></div>
     </div>
   </div>
-  <div class="floating-reader-controls">
-    <div class="theme-dot small theme-effect-toggle active" id="glowlineToggle" title="Toggle scan bar">FX</div>
-  </div>
   <script>
     (function () {
       const themes = [
@@ -133,7 +130,6 @@
       const switcher = document.getElementById("themeSwitcher");
       const toggle = document.getElementById("themeToggle");
       const options = document.getElementById("themeOptions");
-      const glowlineToggle = document.getElementById("glowlineToggle");
 
       function setTheme(themeName) {
         themes.forEach(name => body.classList.remove(name));
@@ -141,17 +137,10 @@
         localStorage.setItem("retroterminal_theme", themeName);
       }
 
-      function setGlowlineEnabled(enabled) {
-        body.classList.toggle("glowline-off", !enabled);
-        glowlineToggle.classList.toggle("active", enabled);
-        localStorage.setItem("retroterminal_glowline_enabled", enabled ? "1" : "0");
-      }
-
       const saved = localStorage.getItem("retroterminal_theme");
       if (saved && themes.includes(saved)) {
         setTheme(saved);
       }
-      setGlowlineEnabled(localStorage.getItem("retroterminal_glowline_enabled") !== "0");
 
       toggle.addEventListener("click", () => {
         switcher.classList.toggle("open");
@@ -161,10 +150,6 @@
         el.addEventListener("click", () => {
           setTheme(el.getAttribute("data-theme"));
         });
-      });
-
-      glowlineToggle.addEventListener("click", () => {
-        setGlowlineEnabled(body.classList.contains("glowline-off"));
       });
 
       let lastY = window.scrollY;
