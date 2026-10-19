@@ -4,6 +4,7 @@ title: Posts
 ---
 
 <section class="services">
+  {% if site.posts.size > 0 %}
   <h2>All Posts</h2>
   <ul>
     {% for p in site.posts %}
@@ -13,5 +14,7 @@ title: Posts
       </li>
     {% endfor %}
   </ul>
+  {% else %}
+  <p>Posts are temporarily hidden.</p>
+  {% endif %}
 </section>
-

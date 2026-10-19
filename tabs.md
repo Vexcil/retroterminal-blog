@@ -394,6 +394,7 @@ noindex: true
   }
 
   async function loadIndex() {
+    listEl.textContent = "Loading tab index...";
     if (primaryApiUrl) {
       try {
         useRemoteApi = true;
@@ -412,16 +413,7 @@ noindex: true
 
     for (const sourceUrl of sources) {
       try {
-        const response = await fetch(sourceUrl, {
-          cache: "no-store",
-          mode: isAbsoluteUrl(sourceUrl) ? "cors" : "same-origin"
-        });
-
-        if (!response.ok) {
-          throw new Error("HTTP " + response.status);
-        }
-
-        const data = await response.json();
+        const data = await fetchIndexJson(sourceUrl, 30000);
         allTabs = data.map(normalizeTabItem);
         totalTabs = allTabs.length;
         syncFolderOptions(
@@ -440,17 +432,24 @@ noindex: true
     listEl.textContent = "Failed to load tab index.";
   }
 
-  async function fetchRemotePage(page) {
-    const response = await fetch(buildApiUrl(page), {
-      cache: "no-store",
-      mode: "cors"
-    });
-
-    if (!response.ok) {
-      throw new Error("HTTP " + response.status);
+  async function fetchIndexJson(url, timeoutMs) {
+    const controller = new AbortController();
+    const timeout = setTimeout(function() { controller.abort(); }, timeoutMs);
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        mode: isAbsoluteUrl(url) ? "cors" : "same-origin",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return await response.json();
+    } finally {
+      clearTimeout(timeout);
     }
+  }
 
-    const payload = await response.json();
+  async function fetchRemotePage(page) {
+    const payload = await fetchIndexJson(buildApiUrl(page), 12000);
     filteredTabs = (payload.items || []).map(normalizeTabItem);
     totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
     currentPage = typeof payload.page === "number" ? payload.page : page;
