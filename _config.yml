@@ -36,3 +36,5 @@ defaults:
       type: "recipes"
     values:
       layout: default
+      noindex: true
+      sitemap: false

@@ -1,0 +1,41 @@
+---
+layout: default
+---
+<div class="recipe-detail">
+  <nav class="recipe-navigation" aria-label="Recipe navigation"><a href="{{ '/recipes/' | relative_url }}">&larr; All recipes</a></nav>
+  <p class="recipe-classification">{{ page.category | escape }} <span aria-hidden="true">/</span> {{ page.method | escape }}</p>
+  {% if page.source_url %}
+  <p class="recipe-credit">From <a href="{{ page.source_url | escape }}" rel="nofollow noopener">{{ page.source_name | escape }}</a>{% if page.source_author %} &middot; {{ page.source_author | escape }}{% endif %}</p>
+  {% else %}
+  <p class="recipe-credit">{{ page.source_name | default: 'Family recipe' | escape }}{% if page.source_note %} &middot; {{ page.source_note | escape }}{% endif %}</p>
+  {% endif %}
+  {% if page.yield or page.prep_time or page.cook_time or page.total_time %}
+  <dl class="recipe-facts">
+    {% if page.yield %}<div><dt>Makes</dt><dd>{{ page.yield | escape }}</dd></div>{% endif %}
+    {% if page.prep_time %}<div><dt>Prep</dt><dd>{{ page.prep_time | escape }}</dd></div>{% endif %}
+    {% if page.cook_time %}<div><dt>Cook</dt><dd>{{ page.cook_time | escape }}</dd></div>{% endif %}
+    {% if page.total_time %}<div><dt>Total</dt><dd>{{ page.total_time | escape }}</dd></div>{% endif %}
+  </dl>
+  {% endif %}
+  {% if page.source_only %}<p><a class="recipe-original" href="{{ page.source_url | escape }}" rel="nofollow noopener">Open original recipe &rarr;</a></p>{% endif %}
+  <div class="recipe-body">{{ content }}</div>
+  {% if page.source_url and page.source_only != true %}<p class="recipe-original-note">Directions are condensed cooking notes. <a href="{{ page.source_url | escape }}" rel="nofollow noopener">Original recipe and notes &rarr;</a></p>{% endif %}
+</div>
+<style>
+  .post-title { font-size: clamp(1rem, 3.4vw, 1.8rem); line-height: 1.6; overflow-wrap: anywhere; }
+  .recipe-detail { max-width: 58rem; }
+  .recipe-navigation { margin: 0 0 1.5rem; }
+  .recipe-classification { line-height: 1.9; }
+  .recipe-classification span { margin: 0 .5rem; opacity: .5; }
+  .recipe-credit, .recipe-original-note { opacity: .85; line-height: 1.9; overflow-wrap: anywhere; }
+  .recipe-credit a, .recipe-original-note a, .recipe-navigation a { text-decoration: underline; text-underline-offset: 4px; }
+  .recipe-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; padding: 1rem 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); margin: 1.5rem 0 2rem; }
+  .recipe-facts dt { font-size: .65rem; opacity: .65; text-transform: uppercase; margin-bottom: .6rem; }
+  .recipe-facts dd { margin: 0; font-size: .7rem; line-height: 1.9; }
+  .recipe-body h2 { margin-top: 2rem; font-size: 1rem; line-height: 1.7; }
+  .recipe-body h3 { font-size: .8rem; margin-top: 1.5rem; line-height: 1.8; }
+  .recipe-body li { line-height: 2; margin: .5rem 0; }
+  .recipe-body ol, .recipe-body ul { padding-left: 1.7rem; }
+  .recipe-original { display: inline-block; border: 1px solid var(--fg); padding: .8rem; line-height: 1.8; }
+  .recipe-original-note { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: .65rem; }
+</style>

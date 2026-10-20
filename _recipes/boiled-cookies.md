@@ -1,8 +1,17 @@
 ---
 layout: default
-title: "Family No-Bake Chocolate Oat Bars (Boiled Cookies)"
-category: "Desserts"
-tags: ["no-bake", "chocolate", "oats", "family recipe", "boiled cookies"]
+title: Family No-Bake Chocolate Oat Bars (Boiled Cookies)
+category: Desserts
+tags:
+- no-bake
+- chocolate
+- oats
+- family recipe
+- boiled cookies
+method: Stovetop
+sort_key: 30-40-boiled-cookies
+noindex: true
+sitemap: false
 ---
 
 A pan-set variant of classic no-bake chocolate cookies. Dense, sliceable, and meant to be cut into bars instead of dropped as cookies.

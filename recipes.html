@@ -1,192 +1,132 @@
 ---
 layout: default
 title: Recipes
+permalink: /recipes/
+noindex: true
+sitemap: false
 ---
 
-<section class="services">
-  <h2>Recipes</h2>
-  <p>CRT cooking logs — a mix of old favorites and new experiments.</p>
-
+<section class="recipes-collection" aria-label="Recipe collection">
+  <p class="recipes-intro">Family favorites and saved recipes, organized for the kitchen.</p>
   <div class="recipes-toolbar">
-    <input id="recipeSearch" class="recipe-search" type="search" placeholder="Search recipes..." autocomplete="off">
-    <div class="recipes-chips" id="recipeChips"></div>
+    <div class="recipe-search-field"><label for="recipeSearch">Find a recipe</label><input id="recipeSearch" type="search" placeholder="Search recipes..." autocomplete="off"></div>
+    <div class="recipe-method-field"><label for="recipeMethod">Cooking method</label><select id="recipeMethod"><option value="">All methods</option></select></div>
   </div>
-
-  <div class="recipes-grid" id="recipesGrid">
-    {% assign recipes_sorted = site.recipes | sort: "title" %}
-    {% for r in recipes_sorted %}
-      <article class="recipe-card"
-        data-title="{{ r.title | escape }}"
-        data-category="{{ r.category | default: '' | escape }}"
-        data-tags="{{ r.tags | join: ',' | escape }}">
-        <a class="recipe-card-link" href="{{ r.url | relative_url }}">
-          <div class="recipe-card-top">
-            <h3 class="recipe-card-title">{{ r.title }}</h3>
-            {% if r.category %}
-              <span class="recipe-badge">{{ r.category }}</span>
-            {% endif %}
-          </div>
-
-          {% if r.tags %}
-            <div class="recipe-tags">
-              {% for t in r.tags %}
-                <span class="recipe-tag">{{ t }}</span>
-              {% endfor %}
-            </div>
-          {% endif %}
-
-          <div class="recipe-card-meta">
-            <span class="recipe-open">Open</span>
-            <span class="recipe-path">{{ r.url | relative_url }}</span>
-          </div>
-        </a>
-      </article>
+  <div class="recipes-chips" id="recipeChips" role="group" aria-label="Meal type"></div>
+  <div class="recipes-status"><p id="recipeCount" role="status" aria-live="polite"></p><button type="button" id="recipeClear" hidden>Clear filters</button></div>
+  {% assign recipes_sorted = site.recipes | sort: 'sort_key' %}
+  {% assign meal_groups = recipes_sorted | group_by: 'category' %}
+  {% for meal in meal_groups %}
+  <section class="recipe-group" data-category="{{ meal.name | escape }}">
+    <h2>{{ meal.name | escape }} <span class="recipe-group-count">{{ meal.items.size }}</span></h2>
+    {% assign method_groups = meal.items | group_by: 'method' %}
+    {% for method in method_groups %}
+    <section class="recipe-method-group" data-method="{{ method.name | escape }}">
+      <h3>{{ method.name | escape }}</h3>
+      <div class="recipes-grid">
+        {% for r in method.items %}
+        <article class="recipe-card" data-title="{{ r.title | escape }}" data-category="{{ r.category | escape }}" data-method="{{ r.method | escape }}" data-tags="{{ r.tags | join: ',' | escape }}" data-source="{{ r.source_name | default: 'Family recipe' | escape }}">
+          <a class="recipe-card-link" href="{{ r.url | relative_url }}">
+            {% if r.source_only %}<span class="recipe-link-label">Saved link</span>{% endif %}
+            <h4 class="recipe-card-title">{{ r.title | escape }}</h4>
+            {% if r.tags %}<div class="recipe-tags">{% for tag in r.tags %}<span>{{ tag | escape }}</span>{% endfor %}</div>{% endif %}
+            <div class="recipe-card-meta"><span>Open &rarr;</span><span>{{ r.source_name | default: 'Family recipe' | escape }}</span></div>
+          </a>
+        </article>
+        {% endfor %}
+      </div>
+    </section>
     {% endfor %}
-  </div>
-
-  <p class="recipes-empty" id="recipesEmpty" style="display:none;">No matches.</p>
+  </section>
+  {% endfor %}
+  <p id="recipesEmpty" hidden>No recipes match these filters.</p>
 </section>
-
 <style>
-  .recipes-toolbar{margin:18px 0 14px}
-  .recipe-search{
-    width:100%;
-    max-width:520px;
-    padding:10px 12px;
-    border:1px solid rgba(0,255,0,.35);
-    background:rgba(0,0,0,.35);
-    color:#b7ffb7;
-    border-radius:10px;
-    outline:none;
-  }
-  .recipe-search:focus{border-color:rgba(0,255,0,.7)}
-  .recipes-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-  .chip{
-    padding:6px 10px;
-    border:1px solid rgba(0,255,0,.3);
-    border-radius:999px;
-    background:rgba(0,0,0,.25);
-    color:#b7ffb7;
-    font-size:.9rem;
-    cursor:pointer;
-    user-select:none;
-  }
-  .chip.active{border-color:rgba(0,255,0,.8); box-shadow:0 0 0 1px rgba(0,255,0,.15) inset}
-  .recipes-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
-    gap:14px;
-    margin-top:10px;
-  }
-  .recipe-card{
-    border:1px solid rgba(0,255,0,.25);
-    background:rgba(0,0,0,.25);
-    border-radius:14px;
-    overflow:hidden;
-  }
-  .recipe-card-link{display:block;padding:14px;text-decoration:none;color:inherit}
-  .recipe-card:hover{border-color:rgba(0,255,0,.55)}
-  .recipe-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-  .recipe-card-title{margin:0;font-size:1.05rem;line-height:1.25}
-  .recipe-badge{
-    flex:0 0 auto;
-    padding:4px 8px;
-    border:1px solid rgba(0,255,0,.35);
-    border-radius:999px;
-    font-size:.8rem;
-    opacity:.95;
-    white-space:nowrap;
-  }
-  .recipe-tags{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
-  .recipe-tag{
-    padding:3px 7px;
-    border:1px dashed rgba(0,255,0,.28);
-    border-radius:999px;
-    font-size:.78rem;
-    opacity:.95;
-  }
-  .recipe-card-meta{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-top:12px;
-    padding-top:10px;
-    border-top:1px solid rgba(0,255,0,.18);
-    font-size:.85rem;
-    opacity:.9;
-  }
-  .recipe-open{letter-spacing:.04em}
-  .recipe-path{opacity:.75;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace}
-  .recipes-empty{margin-top:16px;opacity:.9}
+  .recipes-intro { line-height: 2; opacity: .8; margin: 0 0 2rem; }
+  .recipes-toolbar { display: flex; flex-wrap: wrap; gap: 1rem; align-items: end; }
+  .recipe-search-field { flex: 1 1 300px; }
+  .recipe-method-field { flex: 0 1 250px; }
+  .recipes-toolbar label { display: block; font-size: .65rem; line-height: 1.8; margin-bottom: .7rem; opacity: .8; }
+  .recipes-toolbar input, .recipes-toolbar select { width: 100%; max-width: none; box-sizing: border-box; margin: 0; min-height: 44px; padding: .8rem; color: var(--fg); background: var(--bg); border: 1px solid rgba(var(--fg-rgb), .5); font-size: .7rem; }
+  .recipes-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  .recipe-chip { background: var(--bg); color: var(--fg); border: 1px solid rgba(var(--fg-rgb), .4); padding: .7rem .8rem; font-size: .65rem; line-height: 1.6; min-height: 40px; }
+  .recipe-chip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .recipes-status { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin: 1rem 0 2rem; }
+  #recipeCount { margin: 0; font-size: .65rem; line-height: 1.8; opacity: .7; }
+  #recipeClear { font-size: .6rem; padding: .5rem; }
+  .recipe-group { margin: 0 0 3rem; }
+  .recipe-group > h2 { font-size: 1.05rem; line-height: 1.8; margin: 0 0 1.5rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
+  .recipe-group-count { font-size: .7rem; opacity: .55; margin-left: .5rem; }
+  .recipe-method-group { margin-bottom: 1.5rem; }
+  .recipe-method-group > h3 { font-size: .72rem; line-height: 1.8; opacity: .75; margin: 0 0 .8rem; }
+  .recipes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 1rem; }
+  .recipe-card { border: 1px solid rgba(var(--fg-rgb), .3); min-width: 0; }
+  .recipe-card:hover { border-color: var(--fg); }
+  .recipe-card-link { display: flex; flex-direction: column; padding: 1rem; color: inherit; height: 100%; box-sizing: border-box; }
+  .recipe-card-link:focus-visible { outline: 2px solid var(--fg); outline-offset: 3px; }
+  .recipe-card-title { font-size: .8rem; line-height: 1.8; margin: 0 0 1rem; overflow-wrap: anywhere; }
+  .recipe-link-label { font-size: .6rem; opacity: .7; margin-bottom: .8rem; }
+  .recipe-tags { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem; font-size: .55rem; line-height: 1.6; opacity: .7; }
+  .recipe-tags span { border: 1px solid rgba(var(--fg-rgb), .25); padding: .25rem .4rem; }
+  .recipe-card-meta { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .7rem; margin-top: auto; padding-top: .8rem; border-top: 1px solid rgba(var(--fg-rgb), .2); font-size: .55rem; line-height: 1.8; }
+  .recipe-card-meta span:last-child { opacity: .65; max-width: 100%; overflow-wrap: anywhere; }
+  .recipe-card[hidden], .recipe-group[hidden], .recipe-method-group[hidden], #recipeClear[hidden], #recipesEmpty[hidden] { display: none; }
+  @media (max-width: 600px) { .recipe-method-field { flex: 1 1 100%; } .recipe-chip { min-height: 44px; } .recipes-status { align-items: flex-start; } }
 </style>
-
 <script>
-(function(){
+(function () {
   const search = document.getElementById('recipeSearch');
-  const grid = document.getElementById('recipesGrid');
+  const methodSelect = document.getElementById('recipeMethod');
+  const chipContainer = document.getElementById('recipeChips');
+  const count = document.getElementById('recipeCount');
+  const clear = document.getElementById('recipeClear');
   const empty = document.getElementById('recipesEmpty');
-  const chipsWrap = document.getElementById('recipeChips');
-  const cards = Array.from(grid.querySelectorAll('.recipe-card'));
-
-  // Build category chips from existing cards
-  const cats = Array.from(new Set(cards.map(c => (c.dataset.category || '').trim()).filter(Boolean))).sort();
-  const state = { q: '', cat: '' };
-
-  function makeChip(label, value){
-    const el = document.createElement('button');
-    el.type = 'button';
-    el.className = 'chip';
-    el.textContent = label;
-    el.dataset.value = value;
-    el.addEventListener('click', () => {
-      state.cat = (state.cat === value) ? '' : value;
-      render();
-    });
-    return el;
-  }
-
-  if(cats.length){
-    chipsWrap.appendChild(makeChip('All', ''));
-    cats.forEach(c => chipsWrap.appendChild(makeChip(c, c)));
-  }
-
-  function matches(card){
-    const t = (card.dataset.title || '').toLowerCase();
-    const c = (card.dataset.category || '').toLowerCase();
-    const tags = (card.dataset.tags || '').toLowerCase();
-    const q = state.q.trim().toLowerCase();
-    const cat = state.cat.trim().toLowerCase();
-
-    const qOk = !q || t.includes(q) || c.includes(q) || tags.includes(q);
-    const catOk = !cat || c === cat;
-    return qOk && catOk;
-  }
-
-  function render(){
-    const visible = [];
-    cards.forEach(card => {
-      const ok = matches(card);
-      card.style.display = ok ? '' : 'none';
-      if(ok) visible.push(card);
-    });
-
-    // Chip active styling
-    Array.from(chipsWrap.querySelectorAll('.chip')).forEach(ch => {
-      const v = ch.dataset.value || '';
-      const active = (v === state.cat) || (!v && !state.cat);
-      ch.classList.toggle('active', active);
-    });
-
-    empty.style.display = visible.length ? 'none' : '';
-  }
-
-  search.addEventListener('input', (e) => {
-    state.q = e.target.value || '';
-    render();
+  const cards = Array.from(document.querySelectorAll('.recipe-card'));
+  const groups = Array.from(document.querySelectorAll('.recipe-group'));
+  const methodGroups = Array.from(document.querySelectorAll('.recipe-method-group'));
+  const categories = Array.from(new Set(cards.map(card => card.dataset.category)));
+  const methodOrder = ['Instant Pot', 'Bread machine', 'Slow cooker', 'Oven', 'Stovetop', 'Grill', 'No-cook'];
+  const methods = Array.from(new Set(cards.map(card => card.dataset.method))).sort((a, b) => methodOrder.indexOf(a) - methodOrder.indexOf(b));
+  let category = '';
+  ['', ...categories].forEach(value => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'recipe-chip';
+    button.dataset.category = value;
+    button.textContent = value || 'All recipes';
+    button.addEventListener('click', () => { category = value; render(); });
+    chipContainer.appendChild(button);
   });
-
+  methods.forEach(value => {
+    const option = document.createElement('option');
+    option.value = value;
+    option.textContent = value;
+    methodSelect.appendChild(option);
+  });
+  function render() {
+    const query = search.value.trim().toLocaleLowerCase();
+    const method = methodSelect.value;
+    let visible = 0;
+    cards.forEach(card => {
+      const haystack = [card.dataset.title, card.dataset.tags, card.dataset.category, card.dataset.method, card.dataset.source].join(' ').toLocaleLowerCase();
+      const matches = (!category || card.dataset.category === category) && (!method || card.dataset.method === method) && (!query || haystack.includes(query));
+      card.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    methodGroups.forEach(group => { group.hidden = !Array.from(group.querySelectorAll('.recipe-card')).some(card => !card.hidden); });
+    groups.forEach(group => {
+      const total = Array.from(group.querySelectorAll('.recipe-card')).filter(card => !card.hidden).length;
+      group.hidden = total === 0;
+      group.querySelector('.recipe-group-count').textContent = total;
+    });
+    chipContainer.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.category === category)));
+    count.textContent = visible === cards.length ? `${visible} recipes` : `${visible} of ${cards.length} recipes`;
+    clear.hidden = !query && !category && !method;
+    empty.hidden = visible !== 0;
+  }
+  search.addEventListener('input', render);
+  methodSelect.addEventListener('change', render);
+  clear.addEventListener('click', () => { search.value = ''; methodSelect.value = ''; category = ''; render(); });
   render();
 })();
 </script>
-

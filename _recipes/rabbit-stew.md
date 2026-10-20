@@ -2,6 +2,11 @@
 layout: default
 title: Rabbit Stew (demo)
 date: 2025-09-11
+category: Dinner
+method: Stovetop
+sort_key: 10-40-rabbit-stew
+noindex: true
+sitemap: false
 ---
 
 ## Rabbit Stew 🐇🥕
