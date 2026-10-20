@@ -477,10 +477,11 @@ body.glowline-off::after {
   box-sizing: border-box;
   font-size: 10px;
   border: 1px solid var(--fg);
+  color: var(--fg);
   background: var(--bg);
 }
 
-.theme-effect-toggle.active {
+.theme-dot.small.theme-effect-toggle.active {
   color: var(--bg);
   background: var(--fg);
 }
