@@ -69,12 +69,6 @@
   83.33% { --rgb-red: 255; --rgb-green: 191; --rgb-blue: 71; }
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .theme-rgb {
-    animation: none;
-  }
-}
-
 .theme-blackred {
   --bg: #000;
   --fg: #ff3b3b;
@@ -280,7 +274,7 @@ a:hover {
   background: rgba(var(--fg-rgb), 0.1);
 }
 
-body:not(.page-lightweight) .nav-links .synth-nav-link {
+.nav-links .synth-nav-link {
   animation: synth-border-cycle 8s linear infinite;
 }
 
@@ -291,12 +285,6 @@ body:not(.page-lightweight) .nav-links .synth-nav-link {
   50% { border-color: #4ddddd; }
   66.67% { border-color: #638fff; }
   83.33% { border-color: #dc6aff; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body:not(.page-lightweight) .nav-links .synth-nav-link {
-    animation: none;
-  }
 }
 
 .site-header a:focus-visible {
