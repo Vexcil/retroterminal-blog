@@ -20,6 +20,60 @@
   --crt-glow-alpha: 0.02;
 }
 
+@property --rgb-red {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 101;
+}
+
+@property --rgb-green {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 239;
+}
+
+@property --rgb-blue {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 131;
+}
+
+.theme-rgb,
+.theme-rgb .tabs-page {
+  --rgb-red: 101;
+  --rgb-green: 239;
+  --rgb-blue: 131;
+  --bg: #000;
+  --fg-rgb: var(--rgb-red), var(--rgb-green), var(--rgb-blue);
+  --fg: rgb(var(--fg-rgb));
+  --accent: var(--fg);
+  --border: var(--fg);
+  --muted: rgba(var(--fg-rgb), 0.25);
+  --crt-line-alpha: 0.08;
+  --crt-glow-alpha: 0.02;
+  color: var(--fg);
+}
+
+.theme-rgb {
+  /* Slow, small color updates only while this optional theme is selected. */
+  animation: terminal-rgb-cycle 12s steps(40, end) infinite;
+}
+
+@keyframes terminal-rgb-cycle {
+  0%, 100% { --rgb-red: 101; --rgb-green: 239; --rgb-blue: 131; }
+  16.67% { --rgb-red: 77; --rgb-green: 221; --rgb-blue: 221; }
+  33.33% { --rgb-red: 99; --rgb-green: 143; --rgb-blue: 255; }
+  50% { --rgb-red: 220; --rgb-green: 106; --rgb-blue: 255; }
+  66.67% { --rgb-red: 255; --rgb-green: 82; --rgb-blue: 107; }
+  83.33% { --rgb-red: 255; --rgb-green: 191; --rgb-blue: 71; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-rgb {
+    animation: none;
+  }
+}
+
 .theme-blackred {
   --bg: #000;
   --fg: #ff3b3b;
@@ -529,6 +583,20 @@ body.glowline-off::after {
   border: 2px solid #000;
 }
 
+.theme-dot.small.theme-rgb-option {
+  padding: 0;
+  box-sizing: content-box;
+  border-color: transparent;
+  background:
+    linear-gradient(#000, #000) padding-box,
+    conic-gradient(#ff526b, #ffbf47, #65ef83, #4ddddd, #638fff, #dc6aff, #ff526b) border-box;
+}
+
+.theme-rgb-option:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 3px;
+}
+
 
 .theme-menu-core {
   position: fixed;
@@ -565,6 +633,7 @@ body.glowline-off::after {
   mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
   -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 20px, #000 calc(100% - 20px), transparent 100%);
   opacity: 0;
+  visibility: hidden;
   margin-left: 56px;
   pointer-events: auto;
 }
@@ -572,6 +641,7 @@ body.glowline-off::after {
 .theme-switcher.open .theme-options {
   max-width: calc(100vw - 90px);
   opacity: 1;
+  visibility: visible;
 }
 
 .theme-options::-webkit-scrollbar {

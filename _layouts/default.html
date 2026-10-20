@@ -6,7 +6,7 @@
   <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ "/style.css" | relative_url }}?v=20261020-synth-rgb">
+  <link rel="stylesheet" href="{{ "/style.css" | relative_url }}?v=20261020-rgb-theme">
 
   <link rel="icon" href="{{ "/assets/RetroTerminalFavicon.ico" | relative_url }}" type="image/x-icon">
 
@@ -41,6 +41,7 @@
     </div>
     <div class="theme-options" id="themeOptions">
       <div class="theme-dot small" data-theme="theme-green" style="background:#000; box-shadow: inset 0 0 0 2px #0f0;"></div>
+      <button type="button" class="theme-dot small theme-rgb-option" data-theme="theme-rgb" title="RGB cycling theme" aria-label="RGB cycling theme" aria-pressed="false"></button>
       <div class="theme-dot small" data-theme="theme-blackred" style="background:#000; box-shadow: inset 0 0 0 2px #ff3b3b;"></div>
       <div class="theme-dot small" data-theme="theme-blackorange" style="background:#000; box-shadow: inset 0 0 0 2px #ff9f1a;"></div>
       <div class="theme-dot small" data-theme="theme-blackblue" style="background:#000; box-shadow: inset 0 0 0 2px #4169e1;"></div>
@@ -91,6 +92,7 @@
     (function () {
       const themes = [
         "theme-green",
+        "theme-rgb",
         "theme-blackred",
         "theme-blackorange",
         "theme-blackblue",
@@ -136,10 +138,12 @@
       const toggle = document.getElementById("themeToggle");
       const options = document.getElementById("themeOptions");
       const glowlineToggle = document.getElementById("glowlineToggle");
+      const rgbThemeOption = options.querySelector('[data-theme="theme-rgb"]');
 
       function setTheme(themeName) {
         themes.forEach(name => body.classList.remove(name));
         body.classList.add(themeName);
+        rgbThemeOption.setAttribute("aria-pressed", String(themeName === "theme-rgb"));
         localStorage.setItem("retroterminal_theme", themeName);
       }
 
