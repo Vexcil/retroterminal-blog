@@ -3,6 +3,7 @@ layout: default
 title: Guitar Tabs
 permalink: /tabs/
 noindex: true
+lightweight: true
 ---
 
 <style>
