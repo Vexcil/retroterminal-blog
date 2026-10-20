@@ -275,7 +275,7 @@ a:hover {
 }
 
 .nav-links .synth-nav-link {
-  animation: synth-border-cycle 8s linear infinite;
+  animation: synth-border-cycle 5.333333s linear infinite;
 }
 
 @keyframes synth-border-cycle {
