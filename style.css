@@ -225,6 +225,25 @@ a:hover {
   background: rgba(var(--fg-rgb), 0.1);
 }
 
+body:not(.page-lightweight) .nav-links .synth-nav-link {
+  animation: synth-border-cycle 8s linear infinite;
+}
+
+@keyframes synth-border-cycle {
+  0%, 100% { border-color: #ff526b; }
+  16.67% { border-color: #ffbf47; }
+  33.33% { border-color: #65ef83; }
+  50% { border-color: #4ddddd; }
+  66.67% { border-color: #638fff; }
+  83.33% { border-color: #dc6aff; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body:not(.page-lightweight) .nav-links .synth-nav-link {
+    animation: none;
+  }
+}
+
 .site-header a:focus-visible {
   outline: 2px solid var(--fg);
   outline-offset: 4px;
