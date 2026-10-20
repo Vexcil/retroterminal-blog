@@ -39,7 +39,8 @@
 }
 
 .theme-rgb,
-.theme-rgb .tabs-page {
+.theme-rgb .tabs-page,
+.theme-rgb.page-lightweight .crt::before {
   --rgb-red: 101;
   --rgb-green: 239;
   --rgb-blue: 131;
