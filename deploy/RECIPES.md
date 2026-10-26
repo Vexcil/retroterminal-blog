@@ -1,5 +1,9 @@
 # Recipe short links
 
+The repository's root `AGENTS.md` requires GPT recipe additions and renames to
+include short-link registration, manifest updates, and live verification in the
+same task. Follow that rule whenever publishing a recipe.
+
 The recipe collection is published at `https://retroterminal.net/recipes/`.
 `https://rtro.cc/recipes` and `https://rtro.cc/r` both redirect there.
 
