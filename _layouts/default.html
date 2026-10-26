@@ -7,6 +7,10 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ "/style.css" | relative_url }}?v=20261020-synth-150">
+  {% if page.collection == 'recipes' %}
+  <link rel="stylesheet" href="{{ '/assets/recipe-share.css' | relative_url }}?v=20261025">
+  <script src="{{ '/assets/recipe-share.js' | relative_url }}?v=20261025" defer></script>
+  {% endif %}
 
   <link rel="icon" href="{{ "/assets/RetroTerminalFavicon.ico" | relative_url }}" type="image/x-icon">
 
@@ -29,7 +33,12 @@
     {% include header.html %}
     <main class="main-content">
       <article class="post">
-        {% if page.title %}<h1 class="post-title">{{ page.title }}</h1>{% endif %}
+        {% if page.collection == 'recipes' %}
+        <div class="recipe-heading">
+          <h1 class="post-title">{{ page.title }}</h1>
+          {% include recipe-share.html %}
+        </div>
+        {% elsif page.title %}<h1 class="post-title">{{ page.title }}</h1>{% endif %}
         {{ content }}
       </article>
     </main>

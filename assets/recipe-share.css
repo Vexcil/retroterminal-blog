@@ -1,0 +1,58 @@
+.recipe-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.recipe-heading .post-title {
+  flex: 1 1 18rem;
+  min-width: 0;
+  margin: 0;
+  font-size: clamp(1rem, 3.4vw, 1.8rem);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.recipe-share {
+  flex: 0 1 19rem;
+  max-width: 100%;
+  min-width: 0;
+  margin-left: auto;
+  text-align: right;
+}
+.recipe-copy-link {
+  min-height: 44px;
+  padding: .75rem 1rem;
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font: inherit;
+  font-size: .65rem;
+  line-height: 1.6;
+  cursor: pointer;
+}
+.recipe-copy-link:focus-visible,
+.recipe-share-fallback:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 4px;
+}
+.recipe-copy-status {
+  display: block;
+  margin-top: .5rem;
+  font-size: .6rem;
+  line-height: 1.8;
+}
+.recipe-share-fallback {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: .5rem 0 0;
+  padding: .6rem;
+  border: 1px solid var(--fg);
+  background: var(--bg);
+  color: var(--fg);
+  font-family: monospace;
+  font-size: 1rem;
+}
+.recipe-share-fallback[hidden] { display: none; }

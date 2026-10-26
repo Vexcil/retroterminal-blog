@@ -26,7 +26,7 @@ A pan-set variant of classic no-bake chocolate cookies. Dense, sliceable, and me
 - 2 cups granulated sugar  
 - 2/3 cup milk  
 
-### Dry mix
+### Oat mixture (prepare before heating)
 - 2 cups quick oats  
 - 1½ cups peanut butter  
 - 1/2 cup shredded coconut  
@@ -37,13 +37,13 @@ A pan-set variant of classic no-bake chocolate cookies. Dense, sliceable, and me
 
 ## Instructions
 
-1. In a saucepan, combine the cocoa powder, butter, sugar, and milk.
-2. Heat over medium until the mixture reaches a full rolling boil.
-3. Once boiling, start timing and boil for **3 minutes**.
-4. While the mixture boils, combine the oats, peanut butter, shredded coconut, vanilla, and salt in a large heat-safe bowl.
-5. After 3 minutes, remove the saucepan from heat and immediately pour the hot chocolate mixture into the oat mixture.
-6. Stir thoroughly until fully combined.
-7. Pour the mixture into a 13 × 9 inch pan and spread evenly.
+1. **Prepare everything before turning on the heat (mise en place).** Measure every ingredient. Set out a 13 × 9 inch pan, a large heat-safe mixing bowl, a stirring spoon or spatula, and a timer.
+2. In the mixing bowl, combine the oats, peanut butter, shredded coconut, vanilla, and salt. Have this oat mixture and the pan ready beside the stove **before cooking the chocolate base**.
+3. In a saucepan, combine the measured cocoa powder, butter, sugar, and milk.
+4. Heat over medium, stirring continuously and scraping the bottom, until the mixture reaches a full rolling boil.
+5. Once it reaches a full rolling boil, start the timer and boil for **3 minutes**, continuing to stir and scrape the bottom. **Stay at the stove: do not measure or mix other ingredients while the chocolate boils, or it can burn.**
+6. After 3 minutes, remove the saucepan from heat and immediately pour the hot chocolate mixture into the prepared oat mixture.
+7. Stir thoroughly until fully combined, then immediately pour into the prepared pan and spread evenly.
 8. Refrigerate until fully set, then cut into bars.
 
 ---

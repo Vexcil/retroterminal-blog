@@ -1,0 +1,6 @@
+{% assign recipe_short_slug = page.short_slug | default: page.slug | remove: '-' | remove: '_' %}
+<div class="recipe-share">
+  <button type="button" class="recipe-copy-link" data-recipe-link="https://rtro.cc/r/{{ recipe_short_slug | escape }}">Copy link</button>
+  <span class="recipe-copy-status" role="status" aria-live="polite"></span>
+  <input class="recipe-share-fallback" type="text" readonly value="https://rtro.cc/r/{{ recipe_short_slug | escape }}" aria-label="Recipe short link" hidden>
+</div>
