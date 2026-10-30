@@ -22,6 +22,10 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   the partially visible extra rows for count-in, metronome, and display
   controls. Print and downloads remain in the top toolbar only. Both locations
   share player state.
+- Keyboard shortcuts: **Space** plays/pauses, **T** toggles Tracks, **P** toggles
+  Playback options, and **L** toggles Loop. Typing in inputs, selects, or editable
+  text keeps normal keyboard behavior; held keys and modifier combinations do
+  not retrigger player actions.
 - During page-layout playback, a measure covered by the floating controls scrolls
   near the top of the score viewport. Extra scroll room after the final system
   lets the last measure clear the controls too; paused browsing stays manual.

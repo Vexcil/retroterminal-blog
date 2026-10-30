@@ -173,9 +173,9 @@ tabs_player: true
     <div id="tabs-floating-dock" class="tabs-floating-dock" role="group" aria-label="Quick player controls" hidden>
       <div class="tabs-dock-primary">
       <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
-      <button id="tab-playback-toggle" type="button" aria-expanded="false" aria-controls="tab-playback-panel">Playback</button>
-      <button id="tab-dock-loop" type="button" data-mirror="tab-loop" aria-pressed="false">Loop</button>
-      <button id="tab-dock-play" type="button" data-mirror="tab-play" disabled>Play</button>
+      <button id="tab-playback-toggle" type="button" aria-expanded="false" aria-controls="tab-playback-panel" aria-keyshortcuts="P">Playback</button>
+      <button id="tab-dock-loop" type="button" data-mirror="tab-loop" aria-pressed="false" aria-keyshortcuts="L">Loop</button>
+      <button id="tab-dock-play" type="button" data-mirror="tab-play" aria-keyshortcuts="Space" disabled>Play</button>
       </div>
       <div id="tab-dock-extra" class="tabs-dock-extra" inert></div>
       <button id="tab-dock-expand" class="tabs-dock-expand" type="button" aria-expanded="false" aria-controls="tab-dock-extra" aria-label="Show more player settings" title="Show more player settings">⌃</button>
@@ -1152,12 +1152,19 @@ tabs_player: true
     songTitleEl.focus({ preventScroll: true });
   });
   document.addEventListener('keydown', event => {
-    const editing = event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]');
-    if (event.key.toLowerCase() === 't' && !event.ctrlKey && !event.metaKey && !event.altKey && !editing && !event.repeat) {
-      if (!currentScore) return;
-      event.preventDefault();
-      setTracksOpen(trackSidebar.hidden);
-      return;
+    const target = event.target instanceof Element ? event.target : null;
+    const editing = target && (target.isContentEditable || target.closest('input, textarea, select, [role="textbox"]'));
+    if (currentScore && !editing && !event.ctrlKey && !event.metaKey && !event.altKey && !event.isComposing && !event.defaultPrevented) {
+      const key = event.key.toLowerCase();
+      if ([' ', 't', 'p', 'l'].includes(key)) {
+        event.preventDefault();
+        if (event.repeat) return;
+        if (key === ' ') document.getElementById('tab-dock-play').click();
+        else if (key === 't') setTracksOpen(trackSidebar.hidden);
+        else if (key === 'p') setPlaybackOpen(playbackPanel.hidden);
+        else if (key === 'l') document.getElementById('tab-dock-loop').click();
+        return;
+      }
     }
     if (event.key !== 'Escape') return;
     if (!trackSidebar.hidden) {
