@@ -2,6 +2,33 @@
 
 This keeps the tab viewer UI in the GitHub/Jekyll site while moving the archive and generated index onto this server.
 
+## Viewer behavior
+
+The `/tabs/` page uses `assets/tabs-player.css`, loaded only when the page has
+`tabs_player: true`. Other pages and the shared theme stylesheet are unaffected.
+
+- Opening a tab enters Focus view and gives the score the available viewport.
+- **Library** returns to search without unloading the current song; **Back to tab**
+  reopens it. **Page view** exits focus, and **Escape** also returns to the page.
+- The Focus/Page view choice is remembered in this browser. Resizing does not
+  change the chosen mode. Score rows reflow automatically; the existing Zoom,
+  Layout, Staves, playback, and download controls stay visible.
+- The bottom-right **Tracks** button (or **T**, outside text inputs) opens a floating panel with a normal track selector plus mute,
+  solo, and volume controls. Selecting a track or clicking outside closes it;
+  Escape closes it before leaving Focus view. It takes no score width when
+  closed and never pushes the notation aside.
+- Search stays a compact row on phones. Scrollbars use the active theme, and
+  the default horizontal divider between the library and score is removed.
+- Newer search/filter requests cancel older ones. A failed tab load hides the
+  previous score and keeps playback disabled until a new song loads.
+
+Original recording playback is not enabled by these layout changes. alphaTab
+1.6 supports external audio/video synchronization, but a recording needs a
+chosen source and timing points that match the tab. Filename search alone does
+not establish synchronization. A future integration can accept an optional
+YouTube link per song and save its timing alignment without requiring every
+library entry to have a video.
+
 ## Layout
 
 - `retroterminal.net/tabs/`: existing Jekyll viewer page

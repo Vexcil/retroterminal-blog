@@ -4,47 +4,24 @@ title: Guitar Tabs
 permalink: /tabs/
 noindex: true
 lightweight: true
+tabs_player: true
 ---
 
-<style>
-  /* Keep the CRT effect outside the score's thousands of SVG elements. */
-  .tabs-page #alphaTab,
-  .tabs-page #alphaTab * {
-    animation: none;
-    text-shadow: none;
-  }
-
-  /* alphaTab observes its width; animating it causes repeated score layouts. */
-  .tabs-page .tabs-viewer-shell {
-    transition: none;
-  }
-
-  #tab-sort,
-  #tab-folder {
-    width: auto;
-    min-width: 180px;
-    margin-top: 0;
-    box-sizing: border-box;
-  }
-
-  @media (max-width: 600px) {
-    #tab-sort,
-    #tab-folder {
-      width: 100%;
-    }
-  }
-</style>
-
 <div class="tabs-page">
+  <div class="tabs-library-heading">
+    <p>Find a song, open a tab, and play.</p>
+    <button id="tabs-return" type="button" hidden>Back to tab</button>
+  </div>
+  <section id="tabs-library" aria-label="Tab library">
   <div class="tabs-controls">
-    <input type="text" id="tab-search" placeholder="Search by title..." />
-    <select id="tab-sort">
+    <input type="text" id="tab-search" aria-label="Search by title" placeholder="Search by title..." />
+    <select id="tab-sort" aria-label="Sort tabs">
       <option value="recent" selected>Most Recent</option>
       <option value="played">Most Played</option>
       <option value="title-asc">Title A to Z</option>
       <option value="title-desc">Title Z to A</option>
     </select>
-    <select id="tab-folder">
+    <select id="tab-folder" aria-label="Filter by folder">
       <option value="">All folders</option>
     </select>
     <button type="button" id="tab-upload-button">Upload</button>
@@ -65,31 +42,29 @@ lightweight: true
     <button id="tab-next">Next</button>
   </div>
 
-  <hr>
+  </section>
 
-  <h2>Viewer</h2>
-
-  <p id="current-tab-title"></p>
-  <p class="tab-song-info">
-    <span id="tab-song-title"></span>
-    <span class="tab-song-sep">-</span>
-    <span id="tab-song-artist"></span>
-  </p>
-
-  <div class="tabs-viewer-shell" id="tabs-viewer-shell">
-    <!-- Track sidebar (collapsed by default) -->
-    <div class="at-sidebar collapsed" id="track-sidebar">
-      <div class="at-sidebar-toggle" id="track-sidebar-toggle">
-        TRACKS
+  <section class="tabs-workspace" id="tabs-workspace" aria-label="Tab player">
+    <div class="tabs-player-heading">
+      <div class="tabs-song-heading">
+        <h2 id="tab-song-title" tabindex="-1">Choose a tab to start</h2>
+        <p id="tab-song-artist"></p>
       </div>
-      <div class="at-sidebar-inner">
-        <div class="at-sidebar-title">Tracks</div>
-        <div class="at-track-row at-track-row-all" data-track-index="all">
-          <span class="at-track-name">All tracks</span>
-        </div>
-        <div id="track-list"></div>
+      <div class="tabs-view-actions">
+        <button type="button" id="tabs-library-button">Library</button>
+        <button type="button" id="tabs-expand-toggle" aria-pressed="false">Focus view</button>
       </div>
     </div>
+    <div class="tabs-viewer-shell" id="tabs-viewer-shell">
+    <aside class="at-sidebar" id="track-sidebar" aria-label="Tracks" hidden>
+      <div id="track-sidebar-inner" class="at-sidebar-inner">
+        <label class="tab-speed-label" for="tab-track">Show:
+          <select id="tab-track" disabled><option>Open a tab first</option></select>
+        </label>
+        <p class="tabs-mixer-help">M = mute · S = solo</p>
+        <div id="track-list"></div>
+      </div>
+    </aside>
 
     <!-- Main viewer column -->
     <div class="tabs-viewer-main">
@@ -183,21 +158,15 @@ lightweight: true
       </div>
 
       <div class="at-wrap">
-        <div class="at-viewport">
+        <div class="at-viewport" tabindex="0" role="region" aria-label="Tab notation">
           <div class="at-main" id="alphaTab"></div>
         </div>
       </div>
     </div>
 
-    <button
-      type="button"
-      class="tabs-expand-toggle"
-      id="tabs-expand-toggle"
-      aria-label="Expand tab viewer to viewport width"
-      aria-expanded="false"
-      title="Expand viewer"
-    >▸</button>
-  </div>
+    </div>
+    <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
+  </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
@@ -216,6 +185,7 @@ lightweight: true
   let totalTabs = 0;
   let useRemoteApi = false;
   let searchDebounce = null;
+  let indexRequestController = null;
 
   const searchInput        = document.getElementById('tab-search');
   const sortSelect         = document.getElementById('tab-sort');
@@ -227,11 +197,9 @@ lightweight: true
   const uploadInput        = document.getElementById('tab-upload-file');
   const uploadBtn          = document.getElementById('tab-upload-button');
   const uploadStatusEl     = document.getElementById('tab-upload-status');
-  const currentTitleEl     = document.getElementById('current-tab-title');
   const songTitleEl        = document.getElementById('tab-song-title');
   const songArtistEl       = document.getElementById('tab-song-artist');
   const viewerContainer    = document.getElementById('alphaTab');
-  const viewerShell        = document.getElementById('tabs-viewer-shell');
   const viewerExpandBtn    = document.getElementById('tabs-expand-toggle');
 
   const playBtn            = document.getElementById('tab-play');
@@ -254,7 +222,13 @@ lightweight: true
   const trackSidebar       = document.getElementById('track-sidebar');
   const trackSidebarToggle = document.getElementById('track-sidebar-toggle');
   const trackListEl        = document.getElementById('track-list');
-  const trackAllRow        = document.querySelector('.at-track-row-all');
+  const trackSelect        = document.getElementById('tab-track');
+  const workspace          = document.getElementById('tabs-workspace');
+  const libraryBtn         = document.getElementById('tabs-library-button');
+  const returnBtn          = document.getElementById('tabs-return');
+  const library            = document.getElementById('tabs-library');
+  let focusPreferred = true;
+  try { focusPreferred = localStorage.getItem('retroterminal.tabs.focus') !== 'false'; } catch (_) {}
 
   let alphaApi       = null;
   let currentScore   = null;
@@ -277,6 +251,7 @@ lightweight: true
   function setToggle(btn, on) {
     if (!btn) return;
     btn.classList.toggle("on", on);
+    btn.setAttribute("aria-pressed", String(on));
   }
 
   function setUploadStatus(message, kind) {
@@ -369,28 +344,39 @@ lightweight: true
   }
 
   function updateSongInfo(score) {
-    if (!songTitleEl || !songArtistEl) return;
-    const title = (score && score.title) ? score.title : "";
-    const artist = (score && score.artist) ? score.artist : "";
-    songTitleEl.textContent = title || "Unknown title";
-    songArtistEl.textContent = artist || "Unknown artist";
+    songTitleEl.textContent = (score && score.title) || (currentTabItem && currentTabItem.title) || "Untitled tab";
+    songArtistEl.textContent = (score && score.artist) || "";
+    songTitleEl.title = currentTabItem ? currentTabItem.title : "";
   }
 
-  function setViewerExpanded(expanded) {
-    if (!viewerShell || !viewerExpandBtn) return;
+  function setViewerFocused(focused, remember) {
+    workspace.classList.toggle("focused", focused);
+    document.body.classList.toggle("tabs-focus", focused);
+    document.querySelectorAll('.site-header, footer, .post-title, .tabs-library-heading, #tabs-library').forEach(element => { element.inert = focused; });
+    viewerExpandBtn.textContent = focused ? "Page view" : "Focus view";
+    viewerExpandBtn.setAttribute("aria-pressed", String(focused));
+    setTracksOpen(false);
+    if (remember) {
+      focusPreferred = focused;
+      try { localStorage.setItem('retroterminal.tabs.focus', String(focused)); } catch (_) {}
+    }
+  }
 
-    viewerShell.classList.toggle("expanded", expanded);
-    viewerExpandBtn.textContent = expanded ? "◂" : "▸";
-    viewerExpandBtn.setAttribute("aria-expanded", expanded ? "true" : "false");
-    viewerExpandBtn.setAttribute(
-      "aria-label",
-      expanded
-        ? "Collapse tab viewer back to page width"
-        : "Expand tab viewer to viewport width"
-    );
-    viewerExpandBtn.title = expanded ? "Collapse viewer" : "Expand viewer";
+  function showLibrary() {
+    setViewerFocused(false);
+    library.scrollIntoView({ block: "start" });
+    searchInput.focus({ preventScroll: true });
+  }
 
-    // alphaTab's ResizeObserver handles the new width once it has changed.
+  function selectTrack(value) {
+    if (!alphaApi || !currentScore) return;
+    const tracks = value === "all" ? currentScore.tracks : currentScore.tracks.filter(t => String(t.index) === value);
+    if (!tracks.length) return;
+    alphaApi.renderTracks(tracks);
+    trackSelect.value = value;
+    trackListEl.querySelectorAll('.at-track-select').forEach(button => {
+      button.setAttribute('aria-pressed', String(button.dataset.trackIndex === value));
+    });
   }
 
   async function loadIndex() {
@@ -449,12 +435,28 @@ lightweight: true
   }
 
   async function fetchRemotePage(page) {
-    const payload = await fetchIndexJson(buildApiUrl(page), 12000);
-    filteredTabs = (payload.items || []).map(normalizeTabItem);
-    totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
-    currentPage = typeof payload.page === "number" ? payload.page : page;
-    syncFolderOptions(payload.folders || []);
-    renderPage();
+    if (indexRequestController) indexRequestController.abort();
+    const controller = new AbortController();
+    indexRequestController = controller;
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    listEl.setAttribute('aria-busy', 'true');
+    try {
+      const response = await fetch(buildApiUrl(page), { cache: "no-store", mode: "cors", signal: controller.signal });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      const payload = await response.json();
+      if (controller !== indexRequestController) return;
+      filteredTabs = (payload.items || []).map(normalizeTabItem);
+      totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
+      currentPage = typeof payload.page === "number" ? payload.page : page;
+      syncFolderOptions(payload.folders || []);
+      renderPage();
+    } catch (error) {
+      if (controller !== indexRequestController) return;
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+      if (controller === indexRequestController) listEl.removeAttribute('aria-busy');
+    }
   }
 
   async function uploadTab() {
@@ -581,6 +583,7 @@ lightweight: true
 
       const btn = document.createElement("button");
       btn.textContent = "View";
+      btn.setAttribute("aria-label", "Open " + item.title);
       btn.addEventListener("click", function() {
         loadTab(item);
       });
@@ -591,6 +594,7 @@ lightweight: true
     });
 
     listEl.appendChild(ul);
+    listEl.scrollTop = 0;
 
     pageInfoEl.textContent = "Page " + currentPage + " of " + maxPage;
     prevBtn.disabled = currentPage <= 1;
@@ -598,143 +602,81 @@ lightweight: true
   }
 
   function clearTracks() {
-    if (!trackListEl) return;
-    trackListEl.innerHTML = "";
-    if (trackAllRow) {
-      trackAllRow.classList.remove("active");
-    }
+    trackListEl.replaceChildren();
+    trackSelect.replaceChildren(new Option('Loading tracks...', ''));
+    trackSelect.disabled = true;
+    trackSidebarToggle.disabled = true;
+    setTracksOpen(false);
   }
 
   function populateTracks(score) {
-    if (!score || !score.tracks || !trackListEl) return;
-
     clearTracks();
-
+    if (!score || !score.tracks || !score.tracks.length) return;
+    trackSelect.replaceChildren();
     score.tracks.forEach(track => {
-      const row = document.createElement("div");
-      row.className = "at-track-row";
-      row.dataset.trackIndex = String(track.index);
-
-      const header = document.createElement("div");
-      header.className = "at-track-header";
-
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "at-track-name";
-      nameSpan.textContent = track.name || ("Track " + (track.index + 1));
-
-      const buttonsDiv = document.createElement("div");
-      buttonsDiv.className = "at-track-buttons";
-
-      const muteBtn = document.createElement("button");
-      muteBtn.type = "button";
-      muteBtn.className = "track-mute";
-      muteBtn.textContent = "M";
-
-      const soloBtn = document.createElement("button");
-      soloBtn.type = "button";
-      soloBtn.className = "track-solo";
-      soloBtn.textContent = "S";
-
-      buttonsDiv.appendChild(muteBtn);
-      buttonsDiv.appendChild(soloBtn);
-
-      header.appendChild(nameSpan);
-      header.appendChild(buttonsDiv);
-
-      const volWrap = document.createElement("div");
-      volWrap.className = "at-track-volume";
-
-      const volSlider = document.createElement("input");
-      volSlider.type = "range";
-      volSlider.min = "0";
-      volSlider.max = "100";
-      volSlider.value = "100";
-
-      volWrap.appendChild(volSlider);
-
-      row.appendChild(header);
-      row.appendChild(volWrap);
-      trackListEl.appendChild(row);
-
-      // Track selection on row click (excluding buttons/slider)
-      row.addEventListener("click", function(e) {
-        if ((e.target && e.target.closest(".track-mute")) ||
-            (e.target && e.target.closest(".track-solo")) ||
-            (e.target && e.target.closest(".at-track-volume"))) {
-          return;
-        }
-
-        if (!alphaApi || !currentScore) return;
-
-        const idx = track.index;
-        const selectedTrack = currentScore.tracks.find(t => t.index === idx);
-        if (!selectedTrack) return;
-
-        document
-          .querySelectorAll(".at-track-row")
-          .forEach(el => el.classList.remove("active"));
-        row.classList.add("active");
-
-        if (trackAllRow) {
-          trackAllRow.classList.remove("active");
-        }
-
-        alphaApi.renderTracks([selectedTrack]);
+      const name = track.name || ("Track " + (track.index + 1));
+      trackSelect.add(new Option(name, String(track.index)));
+      const row = document.createElement('div');
+      row.className = 'at-track-row';
+      const header = document.createElement('div');
+      header.className = 'at-track-header';
+      const select = document.createElement('button');
+      select.type = 'button';
+      select.className = 'at-track-select';
+      select.textContent = name;
+      select.title = name;
+      select.dataset.trackIndex = String(track.index);
+      select.setAttribute('aria-label', 'Show ' + name);
+      select.setAttribute('aria-pressed', 'false');
+      select.addEventListener('click', () => {
+        selectTrack(String(track.index));
+        setTracksOpen(false);
+        trackSidebarToggle.focus();
       });
-
-      // Mute toggle
-      muteBtn.addEventListener("click", function(e) {
-        e.stopPropagation();
-        if (!alphaApi) return;
-        const isMuted = muteBtn.classList.toggle("on");
-        try {
-          if (typeof alphaApi.changeTrackMute === "function") {
-            alphaApi.changeTrackMute([track], isMuted);
-          }
-        } catch (err) {
-          console.warn("Track mute unsupported:", err);
-        }
+      const buttons = document.createElement('div');
+      buttons.className = 'at-track-buttons';
+      const mute = document.createElement('button');
+      mute.type = 'button';
+      mute.textContent = 'M';
+      mute.setAttribute('aria-label', 'Mute ' + name);
+      setToggle(mute, false);
+      mute.addEventListener('click', () => {
+        const on = mute.getAttribute('aria-pressed') !== 'true';
+        setToggle(mute, on);
+        alphaApi.changeTrackMute([track], on);
       });
-
-      // Solo toggle
-      soloBtn.addEventListener("click", function(e) {
-        e.stopPropagation();
-        if (!alphaApi || !currentScore) return;
-
-        const isSolo = soloBtn.classList.toggle("on");
-
-        try {
-          if (typeof alphaApi.changeTrackSolo === "function") {
-            if (isSolo) {
-              document
-                .querySelectorAll(".track-solo")
-                .forEach(btn => btn.classList.remove("on"));
-              soloBtn.classList.add("on");
-              alphaApi.changeTrackSolo(currentScore.tracks, false);
-              alphaApi.changeTrackSolo([track], true);
-            } else {
-              alphaApi.changeTrackSolo([track], false);
-            }
-          }
-        } catch (err) {
-          console.warn("Track solo unsupported:", err);
-        }
+      const solo = document.createElement('button');
+      solo.type = 'button';
+      solo.textContent = 'S';
+      solo.className = 'track-solo';
+      solo.setAttribute('aria-label', 'Solo ' + name);
+      setToggle(solo, false);
+      solo.addEventListener('click', () => {
+        const on = solo.getAttribute('aria-pressed') !== 'true';
+        trackListEl.querySelectorAll('.track-solo').forEach(button => setToggle(button, false));
+        alphaApi.changeTrackSolo(currentScore.tracks, false);
+        setToggle(solo, on);
+        if (on) alphaApi.changeTrackSolo([track], true);
       });
-
-      // Volume slider
-      volSlider.addEventListener("input", function(e) {
-        if (!alphaApi) return;
-        const v = parseInt(e.target.value, 10);
-        if (isNaN(v)) return;
-        try {
-          if (typeof alphaApi.changeTrackVolume === "function") {
-            alphaApi.changeTrackVolume([track], v / 100);
-          }
-        } catch (err) {
-          console.warn("Track volume unsupported:", err);
-        }
-      });
+      buttons.append(mute, solo);
+      header.append(select, buttons);
+      const volume = document.createElement('input');
+      volume.type = 'range';
+      volume.min = '0';
+      volume.max = '100';
+      volume.value = '100';
+      volume.setAttribute('aria-label', name + ' volume');
+      volume.addEventListener('input', () => alphaApi.changeTrackVolume([track], Number(volume.value) / 100));
+      const volumeWrap = document.createElement('div');
+      volumeWrap.className = 'at-track-volume';
+      volumeWrap.append(volume);
+      row.append(header, volumeWrap);
+      trackListEl.append(row);
     });
+    trackSelect.add(new Option('All tracks', 'all'));
+    trackSelect.disabled = false;
+    trackSidebarToggle.disabled = false;
+    selectTrack(String(score.tracks[0].index));
   }
 
   function applyDisplaySettings() {
@@ -755,8 +697,8 @@ lightweight: true
 
     try {
       alphaApi.settings.display.scale = uiState.zoom;
-      alphaApi.settings.display.layoutMode = layoutMap[uiState.layout] || alphaTab.LayoutMode.Page;
-      alphaApi.settings.display.staveProfile = staveMap[uiState.staveProfile] || alphaTab.StaveProfile.Default;
+      alphaApi.settings.display.layoutMode = layoutMap[uiState.layout] ?? alphaTab.LayoutMode.Page;
+      alphaApi.settings.display.staveProfile = staveMap[uiState.staveProfile] ?? alphaTab.StaveProfile.Default;
       alphaApi.updateSettings();
       alphaApi.render();
     } catch (err) {
@@ -837,8 +779,8 @@ lightweight: true
     }
 
     alphaApi.playerReady.on(function() {
-      if (playBtn) playBtn.disabled = false;
-      if (stopBtn) stopBtn.disabled = false;
+      if (playBtn) playBtn.disabled = !currentScore;
+      if (stopBtn) stopBtn.disabled = !currentScore;
       if (playerProgressEl) playerProgressEl.textContent = "Ready";
     });
 
@@ -846,10 +788,11 @@ lightweight: true
       if (!playBtn || !e) return;
       const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
       playBtn.textContent = isPlaying ? "Pause" : "Play";
+      if (isPlaying && currentTabItem) reportPlay(currentTabItem);
     });
 
     alphaApi.playerPositionChanged.on(function(e) {
-      if (!songPositionEl || !e) return;
+      if (!songPositionEl || !e || !currentScore) return;
       const now = formatTime(e.currentTime);
       const end = formatTime(e.endTime);
       const position = now + " / " + end;
@@ -889,6 +832,11 @@ lightweight: true
 
     alphaApi.scoreLoaded.on(function(score) {
       currentScore = score;
+      if (alphaApi.isReadyForPlayback) {
+        playBtn.disabled = false;
+        stopBtn.disabled = false;
+        playerProgressEl.textContent = 'Ready';
+      }
       populateTracks(score);
       updateSongInfo(score);
       applyTranspose();
@@ -906,8 +854,21 @@ lightweight: true
       }
     });
 
+    alphaApi.renderFinished.on(function() {
+      if (!currentScore) return;
+      workspace.classList.remove('score-pending');
+      viewerContainer.removeAttribute('aria-busy');
+    });
+
     alphaApi.error.on(function(error) {
       console.error("Tab player error:", error);
+      currentScore = null;
+      playBtn.disabled = true;
+      stopBtn.disabled = true;
+      workspace.classList.add('score-pending');
+      trackSidebarToggle.disabled = true;
+      setTracksOpen(false);
+      viewerContainer.removeAttribute('aria-busy');
       if (playerProgressEl) playerProgressEl.textContent = "Unable to load tab.";
     });
     return alphaApi;
@@ -918,6 +879,8 @@ lightweight: true
     const controller = new AbortController();
     tabLoadController = controller;
     const api = createAlphaTab();
+    workspace.classList.add('score-pending');
+    viewerContainer.setAttribute('aria-busy', 'true');
     api.stop();
     if (api.player) api.player.resetChannelStates();
     currentScore = null;
@@ -936,9 +899,12 @@ lightweight: true
     if (songPositionEl) songPositionEl.textContent = "00:00 / 00:00";
     currentTabItem = item;
     currentTabPlayReported = false;
-    currentTitleEl.textContent = item.title;
+    returnBtn.hidden = false;
+    setViewerFocused(focusPreferred);
+    if (!focusPreferred) workspace.scrollIntoView({ block: 'start' });
+    songTitleEl.focus({ preventScroll: true });
     if (songTitleEl) songTitleEl.textContent = item.title || "Loading...";
-    if (songArtistEl) songArtistEl.textContent = "Loading...";
+    if (songArtistEl) songArtistEl.textContent = "";
     try {
       const response = await fetch(item.file, { signal: controller.signal });
       if (!response.ok) throw new Error("HTTP " + response.status);
@@ -948,7 +914,8 @@ lightweight: true
     } catch (error) {
       if (controller.signal.aborted) return;
       console.error("Unable to load tab:", error);
-      if (playerProgressEl) playerProgressEl.textContent = "Unable to load tab.";
+      viewerContainer.removeAttribute('aria-busy');
+      if (playerProgressEl) playerProgressEl.textContent = "Unable to load tab. Try another tab from the library.";
     }
   }
 
@@ -963,57 +930,70 @@ lightweight: true
         "Content-Type": "application/json"
       },
       body: JSON.stringify({ file: item.file })
+    }).then(function(response) {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
     }).catch(function(err) {
       console.warn("Failed to report play:", err);
       currentTabPlayReported = false;
     });
   }
 
-  // Sidebar toggle (collapsed by default)
-  if (trackSidebar && trackSidebarToggle) {
-    trackSidebarToggle.addEventListener("click", function() {
-      const collapsed = trackSidebar.classList.toggle("collapsed");
-      trackSidebarToggle.textContent = collapsed ? "TRACKS" : "TRACKS ◂";
-    });
+  function setTracksOpen(open) {
+    if (open && !currentScore) return;
+    trackSidebar.hidden = !open;
+    trackSidebarToggle.setAttribute('aria-expanded', String(open));
   }
-
-  if (viewerExpandBtn && viewerShell) {
-    viewerExpandBtn.addEventListener("click", function() {
-      setViewerExpanded(!viewerShell.classList.contains("expanded"));
-    });
-  }
+  trackSidebarToggle.addEventListener('click', event => {
+    event.stopPropagation();
+    setTracksOpen(trackSidebar.hidden);
+  });
+  trackSidebar.addEventListener('click', event => event.stopPropagation());
+  document.addEventListener('click', () => {
+    if (!trackSidebar.hidden) setTracksOpen(false);
+  });
+  trackSelect.addEventListener('change', () => {
+    selectTrack(trackSelect.value);
+    setTracksOpen(false);
+    trackSidebarToggle.focus();
+  });
+  viewerExpandBtn.addEventListener('click', () => setViewerFocused(!workspace.classList.contains('focused'), true));
+  libraryBtn.addEventListener('click', showLibrary);
+  returnBtn.addEventListener('click', () => {
+    setViewerFocused(true);
+    songTitleEl.focus({ preventScroll: true });
+  });
+  document.addEventListener('keydown', event => {
+    const editing = event.target instanceof Element && event.target.closest('input, textarea, select, [contenteditable="true"]');
+    if (event.key.toLowerCase() === 't' && !event.ctrlKey && !event.metaKey && !event.altKey && !editing && !event.repeat) {
+      if (!currentScore) return;
+      event.preventDefault();
+      setTracksOpen(trackSidebar.hidden);
+      return;
+    }
+    if (event.key !== 'Escape') return;
+    if (!trackSidebar.hidden) {
+      setTracksOpen(false);
+      trackSidebarToggle.focus();
+    } else if (workspace.classList.contains('focused')) {
+      setViewerFocused(false);
+      viewerExpandBtn.focus();
+    }
+  });
 
   window.addEventListener("pagehide", function(event) {
     if (event.persisted) return;
     if (tabLoadController) tabLoadController.abort();
+    if (indexRequestController) indexRequestController.abort();
     if (alphaApi) {
       alphaApi.destroy();
       alphaApi = null;
     }
   });
 
-  // "All tracks" selector
-  if (trackAllRow) {
-    trackAllRow.addEventListener("click", function() {
-      if (!alphaApi || !currentScore) return;
-
-      document
-        .querySelectorAll(".at-track-row")
-        .forEach(el => el.classList.remove("active"));
-
-      trackAllRow.classList.add("active");
-      alphaApi.renderScore(currentScore);
-    });
-  }
-
   // Playback controls
   if (playBtn) {
     playBtn.addEventListener("click", function() {
       if (!alphaApi) return;
-      const shouldReportPlay = playBtn.textContent !== "Pause";
-      if (shouldReportPlay && currentTabItem) {
-        reportPlay(currentTabItem);
-      }
       try {
         alphaApi.playPause();
       } catch (err) {
