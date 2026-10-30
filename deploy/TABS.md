@@ -4,7 +4,7 @@ This keeps the tab viewer UI in the GitHub/Jekyll site while moving the archive 
 
 ## Viewer behavior
 
-The `/tabs/` page uses `assets/tabs-player.css`, loaded only when the page has
+The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
 `tabs_player: true`. Other pages and the shared theme stylesheet are unaffected.
 
 - Opening a tab enters Focus view and gives the score the available viewport.
