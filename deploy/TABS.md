@@ -17,6 +17,7 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   solo, and volume controls. Selecting a track or clicking outside closes it;
   Escape closes it before leaving Focus view. It takes no score width when
   closed and never pushes the notation aside.
+- The Master slider uses a themed track whose fill reaches the endpoint at 100%.
 - Search stays a compact row on phones. Scrollbars use the active theme, and
   the default horizontal divider between the library and score is removed.
 - Newer search/filter requests cancel older ones. A failed tab load hides the
