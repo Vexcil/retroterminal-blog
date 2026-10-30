@@ -1035,6 +1035,7 @@ tabs_player: true
       const v = parseInt(masterVolumeInput.value, 10);
       if (isNaN(v)) return;
       uiState.masterVolume = Math.max(0, Math.min(1, v / 100));
+      masterVolumeInput.style.setProperty('--volume-fill', String(v) + '%');
       if (alphaApi) {
         try {
           alphaApi.masterVolume = uiState.masterVolume;

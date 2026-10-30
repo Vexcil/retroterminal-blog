@@ -84,6 +84,28 @@
 .page-tabs .at-track-volume input { box-sizing: border-box; margin: .25rem 0; }
 .page-tabs .tabs-viewer-main { display: flex; flex-direction: column; min-height: 0; }
 .page-tabs .tab-controls-row { flex-shrink: 0; }
+/* The native range padding leaves a gray tail beyond the maximum value. */
+.page-tabs #tab-master-volume {
+  appearance: none; -webkit-appearance: none; padding: 0; border: 0;
+  height: 24px; box-sizing: border-box; background: transparent; cursor: pointer;
+  --volume-fill: 100%;
+}
+.page-tabs #tab-master-volume::-webkit-slider-runnable-track {
+  height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--fg) 0%, var(--fg) var(--volume-fill),
+    rgba(var(--fg-rgb), .22) var(--volume-fill), rgba(var(--fg-rgb), .22) 100%);
+}
+.page-tabs #tab-master-volume::-webkit-slider-thumb {
+  appearance: none; -webkit-appearance: none; width: 14px; height: 14px;
+  margin-top: -4px; border-radius: 50%; background: var(--fg); border: 1px solid var(--bg);
+}
+.page-tabs #tab-master-volume::-moz-range-track {
+  height: 6px; border-radius: 3px; background: rgba(var(--fg-rgb), .22);
+}
+.page-tabs #tab-master-volume::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--fg); }
+.page-tabs #tab-master-volume::-moz-range-thumb {
+  width: 14px; height: 14px; border-radius: 50%; background: var(--fg); border: 1px solid var(--bg);
+}
 .page-tabs .at-wrap {
   display: flex; flex-direction: column; min-height: 0; padding: 0;
   overflow: hidden; margin-top: 0; background: var(--bg);
