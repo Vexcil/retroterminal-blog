@@ -258,6 +258,7 @@ tabs_player: true
   let tabLoadController = null;
   let isPlaying = false;
   let clearanceFrame = null;
+  const trackActivity = new Map();
 
   const uiState = {
     countIn: false,
@@ -669,11 +670,57 @@ tabs_player: true
   }
 
   function clearTracks() {
+    clearTrackActivity();
+    trackActivity.clear();
     trackListEl.replaceChildren();
     trackSelect.replaceChildren(new Option('Loading tracks...', ''));
     trackSelect.disabled = true;
     trackSidebarToggle.disabled = true;
     setTracksOpen(false);
+  }
+
+  function clearTrackPulse(entry) {
+    clearTimeout(entry.timer);
+    entry.timer = null;
+    if (entry.animation) entry.animation.cancel();
+    entry.animation = null;
+    entry.light.classList.remove('is-playing');
+    entry.light.setAttribute('aria-label', entry.name + ': no recent notes');
+  }
+
+  function clearTrackActivity() {
+    trackActivity.forEach(clearTrackPulse);
+  }
+
+  function isTrackAudible(entry, soloActive) {
+    return entry.mute.getAttribute('aria-pressed') !== 'true' && Number(entry.volume.value) > 0 &&
+      (!soloActive || entry.solo.getAttribute('aria-pressed') === 'true');
+  }
+
+  function clearInaudibleTrackActivity() {
+    const soloActive = Array.from(trackActivity.values()).some(entry => entry.solo.getAttribute('aria-pressed') === 'true');
+    trackActivity.forEach(entry => {
+      if (!isTrackAudible(entry, soloActive)) clearTrackPulse(entry);
+    });
+  }
+
+  function pulsePlayingTracks(event) {
+    if (!isPlaying || !currentScore) return;
+    const soloActive = Array.from(trackActivity.values()).some(entry => entry.solo.getAttribute('aria-pressed') === 'true');
+    // A chord arrives as several note events; pulse its track once per batch.
+    const tracks = new Set(event.events.filter(note => note.type === alphaTab.midi.MidiEventType.NoteOn && note.noteVelocity > 0).map(note => note.track));
+    tracks.forEach(index => {
+      const entry = trackActivity.get(index);
+      if (!entry || !isTrackAudible(entry, soloActive)) return;
+      clearTimeout(entry.timer);
+      if (entry.animation) entry.animation.cancel();
+      entry.light.classList.add('is-playing');
+      entry.light.setAttribute('aria-label', entry.name + ': note played');
+      if (!trackSidebar.hidden && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        entry.animation = entry.light.animate([{ opacity: 1 }, { opacity: .35 }], { duration: 180, easing: 'ease-out' });
+      }
+      entry.timer = setTimeout(() => clearTrackPulse(entry), 180);
+    });
   }
 
   function populateTracks(score) {
@@ -685,8 +732,14 @@ tabs_player: true
       trackSelect.add(new Option(name, String(track.index)));
       const row = document.createElement('div');
       row.className = 'at-track-row';
+      row.dataset.trackIndex = String(track.index);
       const header = document.createElement('div');
       header.className = 'at-track-header';
+      const activity = document.createElement('span');
+      activity.className = 'at-track-activity';
+      activity.setAttribute('role', 'img');
+      activity.setAttribute('aria-label', name + ': no recent notes');
+      activity.title = 'Note activity';
       const select = document.createElement('button');
       select.type = 'button';
       select.className = 'at-track-select';
@@ -711,6 +764,7 @@ tabs_player: true
         const on = mute.getAttribute('aria-pressed') !== 'true';
         setToggle(mute, on);
         alphaApi.changeTrackMute([track], on);
+        clearInaudibleTrackActivity();
       });
       const solo = document.createElement('button');
       solo.type = 'button';
@@ -724,20 +778,25 @@ tabs_player: true
         alphaApi.changeTrackSolo(currentScore.tracks, false);
         setToggle(solo, on);
         if (on) alphaApi.changeTrackSolo([track], true);
+        clearInaudibleTrackActivity();
       });
       buttons.append(mute, solo);
-      header.append(select, buttons);
+      header.append(activity, select, buttons);
       const volume = document.createElement('input');
       volume.type = 'range';
       volume.min = '0';
       volume.max = '100';
       volume.value = '100';
       volume.setAttribute('aria-label', name + ' volume');
-      volume.addEventListener('input', () => alphaApi.changeTrackVolume([track], Number(volume.value) / 100));
+      volume.addEventListener('input', () => {
+        alphaApi.changeTrackVolume([track], Number(volume.value) / 100);
+        clearInaudibleTrackActivity();
+      });
       const volumeWrap = document.createElement('div');
       volumeWrap.className = 'at-track-volume';
       volumeWrap.append(volume);
       row.append(header, volumeWrap);
+      trackActivity.set(track.index, { name, light: activity, mute, solo, volume, timer: null, animation: null });
       trackListEl.append(row);
     });
     trackSelect.add(new Option('All tracks', 'all'));
@@ -855,11 +914,15 @@ tabs_player: true
     alphaApi.playerStateChanged.on(function(e) {
       if (!playBtn || !e) return;
       isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
+      if (!isPlaying) clearTrackActivity();
       playBtn.textContent = isPlaying ? "Pause" : "Play";
       if (isPlaying && currentTabItem) reportPlay(currentTabItem);
     });
 
     alphaApi.playedBeatChanged.on(scheduleMeasureClearance);
+    // These events follow audio playback, including tracks that are not displayed.
+    alphaApi.midiEventsPlayedFilter = [alphaTab.midi.MidiEventType.NoteOn];
+    alphaApi.midiEventsPlayed.on(pulsePlayingTracks);
 
     alphaApi.playerPositionChanged.on(function(e) {
       if (!songPositionEl || !e || !currentScore) return;
@@ -950,6 +1013,7 @@ tabs_player: true
 
     alphaApi.error.on(function(error) {
       console.error("Tab player error:", error);
+      clearTrackActivity();
       currentScore = null;
       playBtn.disabled = true;
       stopBtn.disabled = true;
@@ -1190,6 +1254,7 @@ tabs_player: true
     dockResizeObserver.disconnect();
     scoreResizeObserver.disconnect();
     if (clearanceFrame !== null) cancelAnimationFrame(clearanceFrame);
+    clearTrackActivity();
     if (alphaApi) {
       alphaApi.destroy();
       alphaApi = null;

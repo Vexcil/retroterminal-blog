@@ -106,6 +106,16 @@
 .page-tabs .at-track-row { padding: .5rem 0; border-top: 1px solid var(--border); cursor: default; }
 .page-tabs .at-track-row:hover { background: transparent; }
 .page-tabs .at-track-header { min-width: 0; }
+.page-tabs .at-track-activity {
+  flex: 0 0 .5rem; width: .5rem; height: .5rem; border-radius: 50%;
+  border: 1px solid var(--fg); background: var(--bg); opacity: .4;
+}
+.page-tabs .at-track-activity.is-playing {
+  background: var(--fg); opacity: 1; box-shadow: 0 0 .35rem rgba(var(--fg-rgb), .6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-tabs .at-track-activity.is-playing { box-shadow: none; }
+}
 .page-tabs .at-track-select {
   min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis;
   padding: .4rem .2rem; text-align: left; white-space: nowrap; font-size: .65rem;

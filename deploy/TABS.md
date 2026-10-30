@@ -17,6 +17,11 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   solo, and volume controls. Selecting a track or clicking outside closes it;
   Escape closes it before leaving Focus view. It takes no score width when
   closed and never pushes the notation aside.
+- Each mixer track has a theme-colored activity light that briefly pulses on its
+  played synth notes, including tracks that are not displayed in the score.
+  Rests, muted tracks, zero track volume, and tracks excluded by Solo stay dim.
+  Pause/stop and loading another song clear the lights; reduced-motion mode
+  uses a simple on/off indicator without the fade or glow.
 - A compact bottom-right dock provides Tracks, Playback options, Loop, and
   Play/Pause. Playback opens speed and volume options. A chevron expands
   the partially visible extra rows for count-in, metronome, and display
