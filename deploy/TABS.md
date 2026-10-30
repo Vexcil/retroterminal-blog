@@ -18,8 +18,9 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   Escape closes it before leaving Focus view. It takes no score width when
   closed and never pushes the notation aside.
 - A compact bottom-right dock provides Tracks, Playback options, Loop, and
-  Play/Pause. Playback opens mirrored speed, volume, count-in, metronome,
-  display, print, and download controls. Both locations share player state.
+  Play/Pause. Playback opens speed and volume options. A chevron expands
+  the partially visible extra rows for count-in, metronome, display, print,
+  and download controls. Both locations share player state.
 - The Master slider uses a themed track whose fill reaches the endpoint at 100%.
 - All-empty imported lyric placeholders are omitted from the in-memory score;
   real lyric text and the original files are preserved. System padding is compact.

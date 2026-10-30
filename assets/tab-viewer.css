@@ -54,8 +54,8 @@
 .page-tabs .tabs-viewer-shell { position: relative; }
 .page-tabs .at-sidebar {
   position: fixed; right: max(1rem, env(safe-area-inset-right));
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 3.25rem); z-index: 45;
-  width: min(320px, calc(100vw - 2rem)); max-height: min(65dvh, 540px);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--tabs-dock-height, 90px) + .6rem); z-index: 45;
+  width: min(320px, calc(100vw - 2rem)); max-height: min(65dvh, calc(100dvh - var(--tabs-dock-height, 90px) - 3rem));
   padding: .75rem; min-width: 0; overflow: auto;
   box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .5);
   background: var(--bg); border: 1px solid var(--fg);
@@ -63,17 +63,35 @@
 .page-tabs .tabs-floating-dock {
   position: fixed; right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 45;
-  display: flex; gap: .3rem; padding: .4rem; border-radius: .6rem;
+  display: flex; flex-direction: column; gap: .3rem; padding: .4rem; border-radius: .6rem;
+  width: min(360px, calc(100vw - 1rem)); box-sizing: border-box;
   border: 1px solid var(--border); background: var(--bg);
   box-shadow: 0 2px 12px rgba(0, 0, 0, .4);
 }
 .page-tabs .tabs-floating-dock button { padding: .65rem .55rem; font-size: .65rem; line-height: 1.4; }
+.page-tabs .tabs-dock-primary { display: flex; gap: .3rem; }
+.page-tabs .tabs-dock-primary button { flex: 1; min-width: 0; padding-inline: .3rem; }
+.page-tabs #track-sidebar-toggle { flex: 1.2; }
+.page-tabs #tab-playback-toggle { flex: 1.6; }
+.page-tabs #tab-dock-loop { flex: .8; }
+.page-tabs .tabs-dock-extra {
+  max-height: 10px; overflow: hidden; margin-top: .3rem;
+  mask-image: linear-gradient(#000, transparent); opacity: .65;
+}
+.page-tabs .expanded .tabs-dock-extra { max-height: min(55dvh, 420px); overflow: auto; mask-image: none; opacity: 1; }
+.page-tabs .tabs-dock-extra .tab-controls-row { margin: 0; gap: .75rem; }
+.page-tabs .tabs-dock-extra .tab-player-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: .4rem; }
+.page-tabs .tabs-dock-extra .tab-player-controls button { margin: 0; width: 100%; }
+.page-tabs .tabs-dock-extra .tab-speed-label { min-width: 0; margin: 0; display: flex; flex-direction: column; gap: .35rem; }
+.page-tabs .tabs-dock-extra select { width: 100%; min-width: 0; box-sizing: border-box; }
+.page-tabs .tabs-floating-dock .tabs-dock-expand { border: 0; padding: .1rem; font-size: 1rem; line-height: 1; width: 100%; }
+.page-tabs .tabs-floating-dock .tabs-dock-expand:hover { color: var(--fg); background: rgba(var(--fg-rgb), .15); }
 .page-tabs .tabs-floating-dock button:disabled { opacity: .45; }
 .page-tabs .tabs-floating-dock button:is([aria-expanded="true"], [aria-pressed="true"]) { background: var(--fg); color: var(--bg); }
 .page-tabs .tabs-floating-panel {
   position: fixed; z-index: 45; right: max(1rem, env(safe-area-inset-right));
-  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4rem);
-  width: min(520px, calc(100vw - 2rem)); max-height: calc(100dvh - 7rem);
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--tabs-dock-height, 90px) + .6rem);
+  width: min(520px, calc(100vw - 2rem)); max-height: calc(100dvh - var(--tabs-dock-height, 90px) - 3rem);
   box-sizing: border-box; overflow: auto; padding: 1rem;
   background: var(--bg); border: 1px solid var(--fg); border-radius: .5rem;
   box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .5);
@@ -173,9 +191,10 @@
   .page-tabs #tab-page-info { font-size: .65rem; }
   .page-tabs .tabs-floating-dock { right: .5rem; bottom: .5rem; gap: .2rem; padding: .25rem; }
   .page-tabs .tabs-floating-dock button { font-size: .6rem; padding: .65rem .4rem; }
+  .page-tabs .tabs-dock-primary button { padding-inline: .25rem; }
 }
 @media (max-width: 360px) {
-  .page-tabs .theme-switcher, .page-tabs .theme-menu-core { bottom: 4.5rem; }
+  .page-tabs .theme-switcher, .page-tabs .theme-menu-core { bottom: 7rem; }
 }
 /* Short landscape screens still allow every existing control to be reached. */
 @media (max-height: 500px) {

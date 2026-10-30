@@ -171,10 +171,14 @@ tabs_player: true
       <div id="tab-floating-options"></div>
     </aside>
     <div id="tabs-floating-dock" class="tabs-floating-dock" role="group" aria-label="Quick player controls" hidden>
+      <div class="tabs-dock-primary">
       <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
       <button id="tab-playback-toggle" type="button" aria-expanded="false" aria-controls="tab-playback-panel">Playback</button>
       <button id="tab-dock-loop" type="button" data-mirror="tab-loop" aria-pressed="false">Loop</button>
       <button id="tab-dock-play" type="button" data-mirror="tab-play" disabled>Play</button>
+      </div>
+      <div id="tab-dock-extra" class="tabs-dock-extra" inert></div>
+      <button id="tab-dock-expand" class="tabs-dock-expand" type="button" aria-expanded="false" aria-controls="tab-dock-extra" aria-label="Show more player settings" title="Show more player settings">⌃</button>
     </div>
   </section>
 </div>
@@ -237,6 +241,8 @@ tabs_player: true
   const playbackPanel      = document.getElementById('tab-playback-panel');
   const playbackToggle     = document.getElementById('tab-playback-toggle');
   const floatingOptions    = document.getElementById('tab-floating-options');
+  const dockExtra          = document.getElementById('tab-dock-extra');
+  const dockExpand         = document.getElementById('tab-dock-expand');
   const workspace          = document.getElementById('tabs-workspace');
   const libraryBtn         = document.getElementById('tabs-library-button');
   const returnBtn          = document.getElementById('tabs-return');
@@ -371,6 +377,7 @@ tabs_player: true
     viewerExpandBtn.setAttribute("aria-pressed", String(focused));
     setTracksOpen(false);
     setPlaybackOpen(false);
+    setDockExpanded(false);
     if (remember) {
       focusPreferred = focused;
       try { localStorage.setItem('retroterminal.tabs.focus', String(focused)); } catch (_) {}
@@ -974,13 +981,35 @@ tabs_player: true
     if (open && !currentScore) return;
     trackSidebar.hidden = !open;
     trackSidebarToggle.setAttribute('aria-expanded', String(open));
-    if (open) setPlaybackOpen(false);
+    if (open) {
+      setPlaybackOpen(false);
+      setDockExpanded(false);
+    }
   }
+  function setDockExpanded(expanded) {
+    floatingDock.classList.toggle('expanded', expanded);
+    dockExtra.inert = !expanded;
+    dockExpand.setAttribute('aria-expanded', String(expanded));
+    dockExpand.setAttribute('aria-label', expanded ? 'Hide extra player settings' : 'Show more player settings');
+    dockExpand.title = expanded ? 'Hide extra player settings' : 'Show more player settings';
+    dockExpand.textContent = expanded ? '⌄' : '⌃';
+  }
+  dockExpand.addEventListener('click', () => {
+    const expanded = !floatingDock.classList.contains('expanded');
+    setTracksOpen(false);
+    setPlaybackOpen(false);
+    setDockExpanded(expanded);
+  });
+  const dockResizeObserver = new ResizeObserver(entries => {
+    workspace.style.setProperty('--tabs-dock-height', entries[0].target.getBoundingClientRect().height + 'px');
+  });
+  dockResizeObserver.observe(floatingDock);
   function setPlaybackOpen(open) {
     playbackPanel.hidden = !open;
     playbackToggle.setAttribute('aria-expanded', String(open));
     if (open) {
       setTracksOpen(false);
+      setDockExpanded(false);
       syncFloatingControls();
     }
   }
@@ -1009,7 +1038,8 @@ tabs_player: true
       if (sourceId === 'tab-play' || sourceId === 'tab-loop') control.remove();
     });
     copy.querySelectorAll('label[for]').forEach(label => { label.htmlFor = 'floating-' + label.htmlFor; });
-    floatingOptions.append(copy);
+    if (row.classList.contains('tab-controls-row-secondary')) dockExtra.append(copy);
+    else floatingOptions.append(copy);
   });
   let forwardingControl = false;
   workspace.addEventListener('click', event => {
@@ -1053,6 +1083,7 @@ tabs_player: true
     if (forwardingControl) return;
     if (!trackSidebar.hidden) setTracksOpen(false);
     if (!playbackPanel.hidden) setPlaybackOpen(false);
+    if (floatingDock.classList.contains('expanded')) setDockExpanded(false);
   });
   trackSelect.addEventListener('change', () => {
     selectTrack(trackSelect.value);
@@ -1080,6 +1111,9 @@ tabs_player: true
     } else if (!playbackPanel.hidden) {
       setPlaybackOpen(false);
       playbackToggle.focus();
+    } else if (floatingDock.classList.contains('expanded')) {
+      setDockExpanded(false);
+      dockExpand.focus();
     } else if (workspace.classList.contains('focused')) {
       setViewerFocused(false);
       viewerExpandBtn.focus();
@@ -1091,6 +1125,7 @@ tabs_player: true
     if (tabLoadController) tabLoadController.abort();
     if (indexRequestController) indexRequestController.abort();
     controlObserver.disconnect();
+    dockResizeObserver.disconnect();
     if (alphaApi) {
       alphaApi.destroy();
       alphaApi = null;
