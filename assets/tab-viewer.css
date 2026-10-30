@@ -164,6 +164,9 @@
   background: var(--bg);
 }
 .page-tabs.tabs-focus .theme-switcher { z-index: 40; }
+/* The theme wrapper spans the screen. Only its visible controls take clicks. */
+.page-tabs .theme-switcher { pointer-events: none; }
+.page-tabs .theme-menu-core, .page-tabs .theme-options { pointer-events: auto; }
 .page-tabs .focused .tabs-player-heading { flex-shrink: 0; }
 .page-tabs .focused .tabs-viewer-shell { flex: 1; overflow: hidden; }
 .page-tabs .focused .at-wrap { flex: 1; }

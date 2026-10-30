@@ -26,6 +26,8 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   real lyric text and the original files are preserved. System padding is compact.
 - Filled SVG symbols use the theme foreground, including noteheads, beams,
   repeat dots and rests; open staff, tie and slur paths remain unfilled.
+- The theme picker wrapper ignores pointer events outside its actual controls,
+  so its transparent strip cannot block the floating dock expander.
 - Search stays a compact row on phones. Scrollbars use the active theme, and
   the default horizontal divider between the library and score is removed.
 - Newer search/filter requests cancel older ones. A failed tab load hides the
