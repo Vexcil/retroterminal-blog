@@ -1035,7 +1035,7 @@ tabs_player: true
       const sourceId = control.id;
       control.id = 'floating-' + sourceId;
       control.dataset.mirror = sourceId;
-      if (sourceId === 'tab-play' || sourceId === 'tab-loop') control.remove();
+      if (['tab-play', 'tab-loop', 'tab-print', 'tab-download', 'tab-download-midi'].includes(sourceId)) control.remove();
     });
     copy.querySelectorAll('label[for]').forEach(label => { label.htmlFor = 'floating-' + label.htmlFor; });
     if (row.classList.contains('tab-controls-row-secondary')) dockExtra.append(copy);
