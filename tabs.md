@@ -214,6 +214,7 @@ tabs_player: true
   const songTitleEl        = document.getElementById('tab-song-title');
   const songArtistEl       = document.getElementById('tab-song-artist');
   const viewerContainer    = document.getElementById('alphaTab');
+  const scoreViewport      = document.querySelector('.at-viewport');
   const viewerExpandBtn    = document.getElementById('tabs-expand-toggle');
 
   const playBtn            = document.getElementById('tab-play');
@@ -255,6 +256,8 @@ tabs_player: true
   let currentTabItem = null;
   let currentTabPlayReported = false;
   let tabLoadController = null;
+  let isPlaying = false;
+  let clearanceFrame = null;
 
   const uiState = {
     countIn: false,
@@ -267,6 +270,48 @@ tabs_player: true
     staveProfile: "tab",
     transpose: 0
   };
+
+  function updateScoreScrollRoom() {
+    // Leave enough room after the final system for it to reach the top too.
+    // Keep this outside alphaTab's render surface so score coordinates stay intact.
+    let space = 0;
+    if (currentScore && uiState.layout === 'page') {
+      const lastBar = alphaApi.boundsLookup?.findMasterBarByIndex(currentScore.masterBars.length - 1);
+      space = Math.max(0, lastBar
+        ? scoreViewport.clientHeight + lastBar.visualBounds.y - 12 - viewerContainer.offsetHeight
+        : scoreViewport.clientHeight - 24);
+    }
+    scoreViewport.style.setProperty('--tabs-score-tail-space', space + 'px');
+  }
+
+  function keepPlayingMeasureClear() {
+    if (!isPlaying || !currentScore || uiState.layout !== 'page' || workspace.classList.contains('score-pending')) return;
+    const cursor = viewerContainer.querySelector('.at-cursor-bar');
+    if (!cursor) return;
+    const bar = cursor.getBoundingClientRect();
+    const viewport = scoreViewport.getBoundingClientRect();
+    if (!bar.width || !bar.height || bar.bottom <= viewport.top || bar.top >= viewport.bottom) return;
+    const covered = [floatingDock, trackSidebar, playbackPanel].some(panel => {
+      if (panel.hidden) return false;
+      const rect = panel.getBoundingClientRect();
+      return rect.width && rect.height && bar.right > rect.left - 12 && bar.left < rect.right + 12 &&
+        bar.bottom > rect.top - 12 && bar.top < rect.bottom + 12;
+    });
+    if (!covered) return;
+    const top = Math.min(scoreViewport.scrollHeight - scoreViewport.clientHeight,
+      Math.max(0, scoreViewport.scrollTop + bar.top - viewport.top - scoreViewport.clientTop - 12));
+    if (Math.abs(top - scoreViewport.scrollTop) < 2) return;
+    scoreViewport.scrollTo({ top, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
+  }
+
+  function scheduleMeasureClearance() {
+    if (clearanceFrame !== null) return;
+    // alphaTab positions its playback cursor and performs its normal scrolling first.
+    clearanceFrame = requestAnimationFrame(() => {
+      clearanceFrame = null;
+      keepPlayingMeasureClear();
+    });
+  }
 
   function setToggle(btn, on) {
     if (!btn) return;
@@ -809,10 +854,12 @@ tabs_player: true
 
     alphaApi.playerStateChanged.on(function(e) {
       if (!playBtn || !e) return;
-      const isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
+      isPlaying = e.state === alphaTab.synth.PlayerState.Playing;
       playBtn.textContent = isPlaying ? "Pause" : "Play";
       if (isPlaying && currentTabItem) reportPlay(currentTabItem);
     });
+
+    alphaApi.playedBeatChanged.on(scheduleMeasureClearance);
 
     alphaApi.playerPositionChanged.on(function(e) {
       if (!songPositionEl || !e || !currentScore) return;
@@ -897,6 +944,8 @@ tabs_player: true
       if (!currentScore) return;
       workspace.classList.remove('score-pending');
       viewerContainer.removeAttribute('aria-busy');
+      updateScoreScrollRoom();
+      scheduleMeasureClearance();
     });
 
     alphaApi.error.on(function(error) {
@@ -1002,8 +1051,14 @@ tabs_player: true
   });
   const dockResizeObserver = new ResizeObserver(entries => {
     workspace.style.setProperty('--tabs-dock-height', entries[0].target.getBoundingClientRect().height + 'px');
+    scheduleMeasureClearance();
   });
   dockResizeObserver.observe(floatingDock);
+  const scoreResizeObserver = new ResizeObserver(() => {
+    updateScoreScrollRoom();
+    scheduleMeasureClearance();
+  });
+  scoreResizeObserver.observe(scoreViewport);
   function setPlaybackOpen(open) {
     playbackPanel.hidden = !open;
     playbackToggle.setAttribute('aria-expanded', String(open));
@@ -1126,6 +1181,8 @@ tabs_player: true
     if (indexRequestController) indexRequestController.abort();
     controlObserver.disconnect();
     dockResizeObserver.disconnect();
+    scoreResizeObserver.disconnect();
+    if (clearanceFrame !== null) cancelAnimationFrame(clearanceFrame);
     if (alphaApi) {
       alphaApi.destroy();
       alphaApi = null;

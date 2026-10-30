@@ -147,6 +147,9 @@
   box-sizing: border-box; overscroll-behavior: contain; background: var(--bg);
 }
 .page-tabs .at-main { min-height: 100%; padding-bottom: 3rem; }
+.page-tabs .at-viewport::after {
+  content: ''; display: block; height: var(--tabs-score-tail-space, 0px);
+}
 .page-tabs .score-pending #alphaTab { opacity: 0; }
 .page-tabs .at-main svg { max-width: none; }
 .page-tabs #alphaTab, .page-tabs #alphaTab * { animation: none; text-shadow: none; }

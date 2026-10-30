@@ -22,6 +22,9 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   the partially visible extra rows for count-in, metronome, and display
   controls. Print and downloads remain in the top toolbar only. Both locations
   share player state.
+- During page-layout playback, a measure covered by the floating controls scrolls
+  near the top of the score viewport. Extra scroll room after the final system
+  lets the last measure clear the controls too; paused browsing stays manual.
 - The Master slider uses a themed track whose fill reaches the endpoint at 100%.
 - All-empty imported lyric placeholders are omitted from the in-memory score;
   real lyric text and the original files are preserved. System padding is compact.
