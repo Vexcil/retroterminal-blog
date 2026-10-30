@@ -60,14 +60,28 @@
   box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .5);
   background: var(--bg); border: 1px solid var(--fg);
 }
-.page-tabs #track-sidebar-toggle {
+.page-tabs .tabs-floating-dock {
   position: fixed; right: max(1rem, env(safe-area-inset-right));
   bottom: max(1rem, env(safe-area-inset-bottom)); z-index: 45;
-  padding: .7rem .8rem; font-size: .7rem; line-height: 1.4;
+  display: flex; gap: .3rem; padding: .4rem; border-radius: .6rem;
+  border: 1px solid var(--border); background: var(--bg);
   box-shadow: 0 2px 12px rgba(0, 0, 0, .4);
 }
-.page-tabs #track-sidebar-toggle:disabled { display: none; }
-.page-tabs #track-sidebar-toggle[aria-expanded="true"] { background: var(--fg); color: var(--bg); }
+.page-tabs .tabs-floating-dock button { padding: .65rem .55rem; font-size: .65rem; line-height: 1.4; }
+.page-tabs .tabs-floating-dock button:disabled { opacity: .45; }
+.page-tabs .tabs-floating-dock button:is([aria-expanded="true"], [aria-pressed="true"]) { background: var(--fg); color: var(--bg); }
+.page-tabs .tabs-floating-panel {
+  position: fixed; z-index: 45; right: max(1rem, env(safe-area-inset-right));
+  bottom: calc(max(1rem, env(safe-area-inset-bottom)) + 4rem);
+  width: min(520px, calc(100vw - 2rem)); max-height: calc(100dvh - 7rem);
+  box-sizing: border-box; overflow: auto; padding: 1rem;
+  background: var(--bg); border: 1px solid var(--fg); border-radius: .5rem;
+  box-shadow: 0 .5rem 2rem rgba(0, 0, 0, .5);
+}
+.page-tabs .tabs-panel-heading { margin: 0 0 .75rem; font-size: .8rem; }
+.page-tabs .tabs-audio-source { margin: 0 0 1rem; font-size: .65rem; opacity: .8; }
+.page-tabs .tabs-floating-panel .tab-controls-row { gap: 1rem; }
+.page-tabs .tabs-floating-panel button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .page-tabs .at-sidebar-inner { min-width: 0; }
 .page-tabs #tab-track { display: block; width: 100%; max-width: 100%; margin: .35rem 0; }
 .page-tabs .tabs-mixer-help { font-size: .6rem; margin: .75rem 0; }
@@ -85,25 +99,25 @@
 .page-tabs .tabs-viewer-main { display: flex; flex-direction: column; min-height: 0; }
 .page-tabs .tab-controls-row { flex-shrink: 0; }
 /* The native range padding leaves a gray tail beyond the maximum value. */
-.page-tabs #tab-master-volume {
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume) {
   appearance: none; -webkit-appearance: none; padding: 0; border: 0;
   height: 24px; box-sizing: border-box; background: transparent; cursor: pointer;
   --volume-fill: 100%;
 }
-.page-tabs #tab-master-volume::-webkit-slider-runnable-track {
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume)::-webkit-slider-runnable-track {
   height: 6px; border-radius: 3px;
   background: linear-gradient(to right, var(--fg) 0%, var(--fg) var(--volume-fill),
     rgba(var(--fg-rgb), .22) var(--volume-fill), rgba(var(--fg-rgb), .22) 100%);
 }
-.page-tabs #tab-master-volume::-webkit-slider-thumb {
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume)::-webkit-slider-thumb {
   appearance: none; -webkit-appearance: none; width: 14px; height: 14px;
   margin-top: -4px; border-radius: 50%; background: var(--fg); border: 1px solid var(--bg);
 }
-.page-tabs #tab-master-volume::-moz-range-track {
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume)::-moz-range-track {
   height: 6px; border-radius: 3px; background: rgba(var(--fg-rgb), .22);
 }
-.page-tabs #tab-master-volume::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--fg); }
-.page-tabs #tab-master-volume::-moz-range-thumb {
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume)::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--fg); }
+.page-tabs :is(#tab-master-volume, #floating-tab-master-volume)::-moz-range-thumb {
   width: 14px; height: 14px; border-radius: 50%; background: var(--fg); border: 1px solid var(--bg);
 }
 .page-tabs .at-wrap {
@@ -118,6 +132,10 @@
 .page-tabs .score-pending #alphaTab { opacity: 0; }
 .page-tabs .at-main svg { max-width: none; }
 .page-tabs #alphaTab, .page-tabs #alphaTab * { animation: none; text-shadow: none; }
+/* Beams, repeat dots, noteheads and other filled paths also need theme ink.
+   Keep open paths unfilled so slurs, brackets and staff lines stay intact. */
+.page-tabs #alphaTab svg { fill: var(--fg); }
+.page-tabs #alphaTab svg path:not([fill="none"]):not([style*="fill: none"]) { fill: var(--fg) !important; }
 .page-tabs .tabs-viewer-shell { transition: none; }
 .page-tabs.tabs-focus { overflow: hidden; }
 .page-tabs .tabs-workspace.focused {
@@ -153,6 +171,11 @@
   .page-tabs .tab-player-progress:empty { display: none; }
   .page-tabs .tabs-pagination { flex-wrap: wrap; }
   .page-tabs #tab-page-info { font-size: .65rem; }
+  .page-tabs .tabs-floating-dock { right: .5rem; bottom: .5rem; gap: .2rem; padding: .25rem; }
+  .page-tabs .tabs-floating-dock button { font-size: .6rem; padding: .65rem .4rem; }
+}
+@media (max-width: 360px) {
+  .page-tabs .theme-switcher, .page-tabs .theme-menu-core { bottom: 4.5rem; }
 }
 /* Short landscape screens still allow every existing control to be reached. */
 @media (max-height: 500px) {

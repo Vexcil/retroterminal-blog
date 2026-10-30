@@ -165,7 +165,17 @@ tabs_player: true
     </div>
 
     </div>
-    <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
+    <aside id="tab-playback-panel" class="tabs-floating-panel" aria-label="Playback and display options" hidden>
+      <p class="tabs-panel-heading">Playback &amp; display</p>
+      <p class="tabs-audio-source">Sound: Synth</p>
+      <div id="tab-floating-options"></div>
+    </aside>
+    <div id="tabs-floating-dock" class="tabs-floating-dock" role="group" aria-label="Quick player controls" hidden>
+      <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
+      <button id="tab-playback-toggle" type="button" aria-expanded="false" aria-controls="tab-playback-panel">Playback</button>
+      <button id="tab-dock-loop" type="button" data-mirror="tab-loop" aria-pressed="false">Loop</button>
+      <button id="tab-dock-play" type="button" data-mirror="tab-play" disabled>Play</button>
+    </div>
   </section>
 </div>
 
@@ -223,6 +233,10 @@ tabs_player: true
   const trackSidebarToggle = document.getElementById('track-sidebar-toggle');
   const trackListEl        = document.getElementById('track-list');
   const trackSelect        = document.getElementById('tab-track');
+  const floatingDock       = document.getElementById('tabs-floating-dock');
+  const playbackPanel      = document.getElementById('tab-playback-panel');
+  const playbackToggle     = document.getElementById('tab-playback-toggle');
+  const floatingOptions    = document.getElementById('tab-floating-options');
   const workspace          = document.getElementById('tabs-workspace');
   const libraryBtn         = document.getElementById('tabs-library-button');
   const returnBtn          = document.getElementById('tabs-return');
@@ -356,6 +370,7 @@ tabs_player: true
     viewerExpandBtn.textContent = focused ? "Page view" : "Focus view";
     viewerExpandBtn.setAttribute("aria-pressed", String(focused));
     setTracksOpen(false);
+    setPlaybackOpen(false);
     if (remember) {
       focusPreferred = focused;
       try { localStorage.setItem('retroterminal.tabs.focus', String(focused)); } catch (_) {}
@@ -676,6 +691,7 @@ tabs_player: true
     trackSelect.add(new Option('All tracks', 'all'));
     trackSelect.disabled = false;
     trackSidebarToggle.disabled = false;
+    floatingDock.hidden = false;
     selectTrack(String(score.tracks[0].index));
   }
 
@@ -814,7 +830,10 @@ tabs_player: true
       display: {
         scale: uiState.zoom,
         staveProfile: uiState.staveProfile,
-        layoutMode: uiState.layout
+        layoutMode: uiState.layout,
+        padding: [16, 12],
+        systemPaddingTop: 4,
+        systemPaddingBottom: 8
       },
       player: {
         enablePlayer: true,
@@ -831,6 +850,19 @@ tabs_player: true
     wirePlayerEvents();
 
     alphaApi.scoreLoaded.on(function(score) {
+      // Some Guitar Pro exports attach empty lyric lines to every beat.
+      // They reserve full lyric staves despite containing no visible content.
+      for (const track of score.tracks) {
+        for (const staff of track.staves) {
+          for (const bar of staff.bars) {
+            for (const voice of bar.voices) {
+              for (const beat of voice.beats) {
+                if (Array.isArray(beat.lyrics) && beat.lyrics.every(line => !String(line || '').trim())) beat.lyrics = null;
+              }
+            }
+          }
+        }
+      }
       currentScore = score;
       if (alphaApi.isReadyForPlayback) {
         playBtn.disabled = false;
@@ -942,14 +974,85 @@ tabs_player: true
     if (open && !currentScore) return;
     trackSidebar.hidden = !open;
     trackSidebarToggle.setAttribute('aria-expanded', String(open));
+    if (open) setPlaybackOpen(false);
   }
+  function setPlaybackOpen(open) {
+    playbackPanel.hidden = !open;
+    playbackToggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      setTracksOpen(false);
+      syncFloatingControls();
+    }
+  }
+  function syncFloatingControls() {
+    workspace.querySelectorAll('[data-mirror]').forEach(control => {
+      const source = document.getElementById(control.dataset.mirror);
+      if (!source) return;
+      control.disabled = source.disabled;
+      if (source.matches('input, select')) {
+        control.value = source.value;
+        if (source.id === 'tab-master-volume') control.style.setProperty('--volume-fill', source.value + '%');
+      } else {
+        control.textContent = source.textContent;
+      }
+      const pressed = source.getAttribute('aria-pressed');
+      if (pressed !== null) control.setAttribute('aria-pressed', pressed);
+    });
+  }
+  // Mirror existing controls so both locations use the same player state.
+  workspace.querySelectorAll('.tabs-viewer-main > .tab-controls-row').forEach(row => {
+    const copy = row.cloneNode(true);
+    copy.querySelectorAll('[id]').forEach(control => {
+      const sourceId = control.id;
+      control.id = 'floating-' + sourceId;
+      control.dataset.mirror = sourceId;
+      if (sourceId === 'tab-play' || sourceId === 'tab-loop') control.remove();
+    });
+    copy.querySelectorAll('label[for]').forEach(label => { label.htmlFor = 'floating-' + label.htmlFor; });
+    floatingOptions.append(copy);
+  });
+  let forwardingControl = false;
+  workspace.addEventListener('click', event => {
+    const control = event.target.closest('button[data-mirror]');
+    if (!control) return;
+    forwardingControl = true;
+    try { document.getElementById(control.dataset.mirror).click(); }
+    finally { forwardingControl = false; }
+    syncFloatingControls();
+  }, true);
+  for (const eventName of ['input', 'change']) {
+    workspace.addEventListener(eventName, event => {
+      const control = event.target.closest('input[data-mirror], select[data-mirror]');
+      if (!control) {
+        syncFloatingControls();
+        return;
+      }
+      const source = document.getElementById(control.dataset.mirror);
+      source.value = control.value;
+      source.dispatchEvent(new Event(eventName, { bubbles: true }));
+      syncFloatingControls();
+    });
+  }
+  const controlObserver = new MutationObserver(syncFloatingControls);
+  workspace.querySelectorAll('.tabs-viewer-main > .tab-controls-row').forEach(row => {
+    controlObserver.observe(row, { subtree: true, childList: true, attributes: true, attributeFilter: ['disabled', 'aria-pressed'] });
+  });
+  syncFloatingControls();
+  playbackToggle.addEventListener('click', event => {
+    event.stopPropagation();
+    setPlaybackOpen(playbackPanel.hidden);
+  });
+  playbackPanel.addEventListener('click', event => event.stopPropagation());
   trackSidebarToggle.addEventListener('click', event => {
     event.stopPropagation();
     setTracksOpen(trackSidebar.hidden);
   });
   trackSidebar.addEventListener('click', event => event.stopPropagation());
+  floatingDock.addEventListener('click', event => event.stopPropagation());
   document.addEventListener('click', () => {
+    if (forwardingControl) return;
     if (!trackSidebar.hidden) setTracksOpen(false);
+    if (!playbackPanel.hidden) setPlaybackOpen(false);
   });
   trackSelect.addEventListener('change', () => {
     selectTrack(trackSelect.value);
@@ -974,6 +1077,9 @@ tabs_player: true
     if (!trackSidebar.hidden) {
       setTracksOpen(false);
       trackSidebarToggle.focus();
+    } else if (!playbackPanel.hidden) {
+      setPlaybackOpen(false);
+      playbackToggle.focus();
     } else if (workspace.classList.contains('focused')) {
       setViewerFocused(false);
       viewerExpandBtn.focus();
@@ -984,6 +1090,7 @@ tabs_player: true
     if (event.persisted) return;
     if (tabLoadController) tabLoadController.abort();
     if (indexRequestController) indexRequestController.abort();
+    controlObserver.disconnect();
     if (alphaApi) {
       alphaApi.destroy();
       alphaApi = null;
