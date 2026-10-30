@@ -3,6 +3,12 @@
 .page-tabs .post { margin-bottom: 0; }
 .page-tabs .post-title { margin: 0 0 1rem; }
 .page-tabs .tabs-page { max-width: none; padding: 0; }
+/* The shared RGB rule gives these descendants fixed channel values.
+   Inherit the body's animated channels so the player follows the same cycle. */
+.page-tabs.theme-rgb .tabs-page,
+.page-tabs.theme-rgb .crt::before {
+  --rgb-red: inherit; --rgb-green: inherit; --rgb-blue: inherit;
+}
 .page-tabs [hidden] { display: none !important; }
 .page-tabs, .page-tabs * { scrollbar-color: var(--fg) var(--bg); scrollbar-width: thin; }
 .page-tabs ::-webkit-scrollbar { width: 10px; height: 10px; }

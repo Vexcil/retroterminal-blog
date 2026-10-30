@@ -41,6 +41,8 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
   repeat dots and rests; open staff, tie and slur paths remain unfilled.
 - The theme picker wrapper ignores pointer events outside its actual controls,
   so its transparent strip cannot block the floating dock expander.
+- RGB inherits its animated color channels from the page body, keeping the
+  library, score, floating controls, and activity lights in the same color cycle.
 - Search stays a compact row on phones. Scrollbars use the active theme, and
   the default horizontal divider between the library and score is removed.
 - Newer search/filter requests cancel older ones. A failed tab load hides the
