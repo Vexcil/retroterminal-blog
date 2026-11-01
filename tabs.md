@@ -25,6 +25,7 @@ tabs_player: true
       <option value="">All folders</option>
     </select>
     <button type="button" id="tab-upload-button">Upload</button>
+    <button type="button" id="tab-songsterr-open">Import Songsterr</button>
     <input
       type="file"
       id="tab-upload-file"
@@ -52,10 +53,36 @@ tabs_player: true
       </div>
       <div class="tabs-view-actions">
         <button type="button" id="tabs-library-button">Library</button>
+        <button type="button" id="tab-youtube-toggle" aria-expanded="false" aria-controls="tab-youtube-panel">YouTube</button>
         <button type="button" id="tabs-expand-toggle" aria-pressed="false">Focus view</button>
       </div>
     </div>
     <div class="tabs-viewer-shell" id="tabs-viewer-shell">
+    <aside id="tab-youtube-panel" class="tabs-youtube-panel" aria-label="YouTube synchronization" hidden>
+      <div class="yt-heading"><strong>YouTube sync</strong><button id="yt-close" type="button" aria-label="Close YouTube panel">Close</button></div>
+      <div id="yt-embed"></div>
+      <p id="yt-status" role="status">Open a tab to link a recording.</p>
+      <div class="yt-row"><button id="yt-enable" type="button" disabled>Use YouTube</button><button id="yt-synth" type="button" disabled>Use synth</button></div>
+      <details open><summary>Find on Songsterr</summary>
+        <label>Artist / song<input id="yt-song-search" type="search" maxlength="120"></label>
+        <button id="yt-find" type="button">Find recordings</button>
+        <div id="yt-song-results" class="yt-results"></div>
+        <label>Or paste a Songsterr tab link<input id="yt-song-link" type="text" placeholder="https://www.songsterr.com/…"></label>
+        <div class="yt-row"><button id="yt-import-song" type="button">Get video &amp; timing</button><button id="yt-import-tab" type="button">Import tab</button></div>
+        <div id="yt-video-results" class="yt-results"></div>
+      </details>
+      <details><summary>Use your own video / adjust timing</summary>
+        <label>YouTube URL<input id="yt-url" type="url" placeholder="https://www.youtube.com/watch?v=…"></label>
+        <button id="yt-load" type="button">Load video</button>
+        <p>Start with the tab's tempo, or mark bars while listening. Played-bar numbers include repeats.</p>
+        <div class="yt-row"><label>Played bar<input id="yt-bar" type="number" min="1" value="1"></label><label>Video seconds<input id="yt-seconds" type="number" min="0" step="0.01" value="0"></label></div>
+        <div class="yt-row"><button id="yt-now" type="button">Current time</button><button id="yt-tab-timing" type="button">Align first bar + tab tempo</button></div>
+        <div class="yt-row"><button id="yt-mark" type="button">Mark bar now → next</button><button id="yt-add" type="button">Save entered point</button></div>
+      </details>
+      <details><summary id="yt-point-count">Timing points</summary><ol id="yt-points"></ol></details>
+      <details><summary>Move timing to another browser</summary><p>Video links and timing are saved on this browser, per tab.</p><button id="yt-export" type="button">Export timing</button><label>Import timing JSON<input id="yt-import-file" type="file" accept="application/json,.json"></label></details>
+    </aside>
+
     <aside class="at-sidebar" id="track-sidebar" aria-label="Tracks" hidden>
       <div id="track-sidebar-inner" class="at-sidebar-inner">
         <label class="tab-speed-label" for="tab-track">Show:
@@ -184,14 +211,17 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
+<link rel="stylesheet" href="{{ "/assets/tabs-youtube-sync.css" | relative_url }}?v=20261101">
+<script src="{{ "/assets/tabs-youtube-sync.js" | relative_url }}?v=20261101"></script>
+<script src="{{ "/assets/tabs-access.js" | relative_url }}?v=20261101"></script>
 <script>
 (function() {
   const PAGE_SIZE = 50;
-  const primaryApiUrl = {{ site.tabs_api_url | default: "https://tabs.retroterminal.net/api/tabs" | jsonify }};
-  const playApiUrl = {{ site.tabs_play_api_url | default: "https://tabs.retroterminal.net/api/play" | jsonify }};
-  const primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
-  const fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
-  const uploadUrl = {{ site.tabs_upload_url | default: "https://tabs.retroterminal.net/upload" | jsonify }};
+  let primaryApiUrl = {{ site.tabs_api_url | default: "https://tabs.retroterminal.net/api/tabs" | jsonify }};
+  let playApiUrl = {{ site.tabs_play_api_url | default: "https://tabs.retroterminal.net/api/play" | jsonify }};
+  let primaryIndexUrl = {{ site.tabs_index_url | default: "https://tabs.retroterminal.net/data/tabs.json" | jsonify }};
+  let fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
+  let uploadUrl = {{ site.tabs_upload_url | default: "https://tabs.retroterminal.net/upload" | jsonify }};
 
   let allTabs = [];
   let filteredTabs = [];
@@ -271,6 +301,10 @@ tabs_player: true
     staveProfile: "tab",
     transpose: 0
   };
+
+  const youtubeSync = RetroTabSync.create({getApi: () => alphaApi, getScore: () => currentScore,
+    getItem: () => currentTabItem, getApiBase: () => fileBaseUrl || location.origin,
+    importTab: item => loadTab(normalizeTabItem(item))});
 
   function updateScoreScrollRoom() {
     // Leave enough room after the final system for it to reach the top too.
@@ -490,7 +524,7 @@ tabs_player: true
     const controller = new AbortController();
     const timeout = setTimeout(function() { controller.abort(); }, timeoutMs);
     try {
-      const response = await fetch(url, {
+      const response = await fetch(url, { credentials: "include",
         cache: "no-store",
         mode: isAbsoluteUrl(url) ? "cors" : "same-origin",
         signal: controller.signal
@@ -509,7 +543,7 @@ tabs_player: true
     const timeout = setTimeout(() => controller.abort(), 12000);
     listEl.setAttribute('aria-busy', 'true');
     try {
-      const response = await fetch(buildApiUrl(page), { cache: "no-store", mode: "cors", signal: controller.signal });
+      const response = await fetch(buildApiUrl(page), { credentials: "include", cache: "no-store", mode: "cors", signal: controller.signal });
       if (!response.ok) throw new Error("HTTP " + response.status);
       const payload = await response.json();
       if (controller !== indexRequestController) return;
@@ -541,7 +575,7 @@ tabs_player: true
     setUploadStatus("Uploading...", "working");
 
     try {
-      const response = await fetch(uploadUrl, {
+      const response = await fetch(uploadUrl, { credentials: "include",
         method: "POST",
         body: formData
       });
@@ -981,6 +1015,7 @@ tabs_player: true
         }
       }
       currentScore = score;
+      youtubeSync.scoreLoaded(score, currentTabItem);
       if (alphaApi.isReadyForPlayback) {
         playBtn.disabled = false;
         stopBtn.disabled = false;
@@ -1030,6 +1065,7 @@ tabs_player: true
     if (tabLoadController) tabLoadController.abort();
     const controller = new AbortController();
     tabLoadController = controller;
+    youtubeSync.beforeLoad();
     const api = createAlphaTab();
     workspace.classList.add('score-pending');
     viewerContainer.setAttribute('aria-busy', 'true');
@@ -1058,7 +1094,7 @@ tabs_player: true
     if (songTitleEl) songTitleEl.textContent = item.title || "Loading...";
     if (songArtistEl) songArtistEl.textContent = "";
     try {
-      const response = await fetch(item.file, { signal: controller.signal });
+      const response = await fetch(item.file, { credentials: "include", signal: controller.signal });
       if (!response.ok) throw new Error("HTTP " + response.status);
       const data = await response.arrayBuffer();
       if (controller.signal.aborted) return;
@@ -1075,7 +1111,7 @@ tabs_player: true
     if (!item || !item.file || currentTabPlayReported) return;
     currentTabPlayReported = true;
 
-    fetch(playApiUrl, {
+    fetch(playApiUrl, { credentials: "include",
       method: "POST",
       mode: "cors",
       headers: {
@@ -1502,6 +1538,6 @@ tabs_player: true
     });
   }
 
-  document.addEventListener("DOMContentLoaded", loadIndex);
+  document.addEventListener("DOMContentLoaded", () => RetroTabAccess.start(fileBaseUrl || location.origin).then(base => { fileBaseUrl=base; primaryApiUrl=base+'/api/tabs'; playApiUrl=base+'/api/play'; primaryIndexUrl=base+'/data/tabs.json'; uploadUrl=base+'/upload'; loadIndex(); }));
 })();
 </script>

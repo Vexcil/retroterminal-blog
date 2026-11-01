@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 import argparse
+from urllib.error import HTTPError, URLError
+from songsterr_bridge import songsterr_response
+from tabs_access import authorized, login, serve_private_viewer, config as access_config
 import cgi
 import json
 import mimetypes
@@ -91,7 +94,11 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, **kwargs)
 
     def end_headers(self):
-        self.send_header("Access-Control-Allow-Origin", self.allow_origin)
+        requested_origin = self.headers.get('Origin', '')
+        known_origins = (access_config() or {}).get('origins', [])
+        self.send_header("Access-Control-Allow-Origin", requested_origin if requested_origin in known_origins else self.allow_origin)
+        self.send_header("Access-Control-Allow-Credentials", "true")
+        self.send_header("Vary", "Origin")
         self.send_header("Access-Control-Allow-Methods", "GET, HEAD, POST, OPTIONS")
         self.send_header("Access-Control-Expose-Headers", "Accept-Ranges, Content-Length, Content-Range")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
@@ -104,6 +111,19 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == '/api/session':
+            return self.send_json(HTTPStatus.OK, {'authenticated': authorized(self)})
+        if parsed.path != '/healthz' and not authorized(self):
+            return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
+        if parsed.path in ('/api/songsterr/search', '/api/songsterr/sync'):
+            try:
+                return self.send_json(HTTPStatus.OK, songsterr_response(parsed.path, parse_qs(parsed.query)))
+            except ValueError as error:
+                return self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
+            except (HTTPError, URLError, TimeoutError, OSError, KeyError, TypeError):
+                return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'Songsterr is unavailable. You can still paste a YouTube URL and mark timing manually.'})
+        if parsed.path in ('/viewer', '/viewer/'):
+            return serve_private_viewer(self)
 
         if parsed.path in {"", "/"}:
             self.send_response(HTTPStatus.FOUND)
@@ -125,7 +145,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 relative_path = unquote(parsed.path[len("/files/"):]).lstrip("/")
                 return self.serve_file(
                     self.safe_join(self.files_dir, relative_path),
-                    cache_control="public, max-age=300",
+                    cache_control="private, no-store",
                 )
             except PermissionError:
                 self.send_error(HTTPStatus.FORBIDDEN, "Forbidden")
@@ -134,6 +154,15 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND, "Not found")
 
     def do_POST(self):
+        if urlparse(self.path).path == '/api/login':
+            return login(self)
+        origin = self.headers.get('Origin')
+        if origin and origin not in (access_config() or {}).get('origins', []):
+            return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Origin is not allowed.'})
+        if not authorized(self):
+            return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
+        if urlparse(self.path).path == '/api/songsterr/import':
+            return self.import_songsterr()
         if urlparse(self.path).path != "/upload":
             if urlparse(self.path).path == "/api/play":
                 return self.record_play()
@@ -177,6 +206,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.INTERNAL_SERVER_ERROR, {"error": f"Upload failed: {err}"})
 
     def do_HEAD(self):
+        if not authorized(self):
+            return self.send_json_body(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'}, head_only=True)
         parsed = urlparse(self.path)
 
         if parsed.path in {"", "/"}:
@@ -197,7 +228,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 return self.serve_file(
                     self.safe_join(self.files_dir, relative_path),
                     head_only=True,
-                    cache_control="public, max-age=300",
+                    cache_control="private, no-store",
                 )
             except PermissionError:
                 self.send_error(HTTPStatus.FORBIDDEN, "Forbidden")
@@ -415,6 +446,37 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
         return file_item.filename, file_data
 
+    def import_songsterr(self):
+        import tempfile
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 1024:
+                raise ValueError('Invalid import request.')
+            song_id = str(json.loads(self.rfile.read(length)).get('id', ''))
+            if not re.fullmatch(r'[1-9][0-9]{0,9}', song_id):
+                raise ValueError('Invalid Songsterr song ID.')
+            from songsterr_vendor.gen_gp import fetch_all_tracks, generate_gp
+            # The upstream converter reads its bundled GP template via utils.
+            meta, tracks = fetch_all_tracks(int(song_id))
+            name = self.sanitize_filename(str(meta.get('artist', '')) + ' - ' + str(meta.get('title', song_id)) + '.gp')
+            with tempfile.TemporaryDirectory() as folder:
+                generated = Path(folder) / 'import.gp'
+                generate_gp(tracks, generated, meta)
+                data = generated.read_bytes()
+            if len(data) > MAX_UPLOAD_BYTES:
+                raise ValueError('Generated tab is too large.')
+            with self.upload_lock:
+                destination_dir = self.files_dir / UPLOAD_SUBDIR
+                destination_dir.mkdir(parents=True, exist_ok=True)
+                destination = self.make_unique_destination(destination_dir, name)
+                destination.write_bytes(data)
+                self.rebuild_index()
+            return self.send_json(HTTPStatus.CREATED, {'title': destination.stem, 'file': self.make_public_file_url(destination), 'songsterr_id': int(song_id)})
+        except (ValueError, TypeError, json.JSONDecodeError) as error:
+            return self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
+        except Exception:
+            return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'Songsterr import failed. Your existing tabs were not modified.'})
+
     def sanitize_filename(self, filename: str) -> str:
         base_name = Path(filename).name.strip()
         if not base_name:
@@ -558,8 +620,10 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         entries = build_entries(str(self.files_dir), self.url_prefix, "")
         output_path = self.data_dir / "tabs.json"
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("w", encoding="utf-8") as handle:
+        temporary_path = output_path.with_suffix('.json.tmp')
+        with temporary_path.open("w", encoding="utf-8") as handle:
             json.dump(entries, handle, ensure_ascii=False, indent=2)
+        temporary_path.replace(output_path)
         with self.index_lock:
             self.index_cache = entries
             self.index_cache_mtime = output_path.stat().st_mtime_ns
