@@ -1,0 +1,17 @@
+[Unit]
+Description=Loopback bridge for private tab player
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+User=vex
+ExecStart=/usr/bin/python3 /home/vex/retro-tabs-tailnet-forward.py
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

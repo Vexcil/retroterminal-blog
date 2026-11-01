@@ -211,9 +211,9 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tabs-youtube-sync.css" | relative_url }}?v=20261101">
-<script src="{{ "/assets/tabs-youtube-sync.js" | relative_url }}?v=20261101"></script>
-<script src="{{ "/assets/tabs-access.js" | relative_url }}?v=20261101"></script>
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-2">
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-2"></script>
+<script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261101-2"></script>
 <script>
 (function() {
   const PAGE_SIZE = 50;

@@ -1,7 +1,7 @@
 const test=require('node:test'), assert=require('node:assert/strict');
 const fs=require('node:fs'), path=require('node:path'), vm=require('node:vm');
 const shim={exports:{}};
-vm.runInThisContext('(function(module){'+fs.readFileSync(path.join(__dirname,'../assets/tabs-youtube-sync.js'),'utf8')+'})')(shim);
+vm.runInThisContext('(function(module){'+fs.readFileSync(path.join(__dirname,'../assets/tab-youtube-sync.js'),'utf8')+'})')(shim);
 const core=shim.exports;
 test('YouTube URLs are parsed with a host allowlist',()=>{
  assert.equal(core.videoId('https://youtu.be/lUBCXGeK694?t=3'),'lUBCXGeK694');
