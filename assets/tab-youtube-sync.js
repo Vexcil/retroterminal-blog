@@ -36,6 +36,7 @@
   const core = {videoId, timeline, importedPoints};
   if (typeof module !== 'undefined' && module.exports) module.exports = core;
   if (!root.document) return;
+  const lookupMisses=new Map();
   let youtubeReady;
   function loadYouTube() {
     if (root.YT && root.YT.Player) return Promise.resolve();
@@ -55,13 +56,82 @@
     const status = $('yt-status'), url = $('yt-url'), pointsList = $('yt-points');
     const apiBase = () => context.getApiBase();
     let player, playerPromise, timer, enabled = false, saved = null, original = [], generation = 0, pendingSeek = null;
-    let searchController, sourceController, pendingImportId, storage, cuedVideoId, edits=0;
+    let searchController, sourceController, nextSongsterrId, knownSongsterrId, storage, cuedVideoId, edits=0;
+    let autoController,autoIdle,autoTimer,autoAttempted=false,noticeChoices=null;
     const attached = new WeakSet();
     const api = () => context.getApi(), score = () => context.getScore();
     const bars = () => score() ? timeline(api(), score()) : [];
     const storageStatus = $('yt-storage-status'), retrySave = $('yt-retry-save');
+    const notice=$('tab-sync-notice'),noticeTitle=$('tab-sync-notice-title'),noticeText=$('tab-sync-notice-text');
     const message = (text, error) => { status.textContent = text; status.classList.toggle('is-error', !!error); };
-    function open(value) { panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value)); }
+    function open(value) { panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value)); if(value) draw(); }
+    function stopDiscovery(manual=false) {
+      autoController?.abort();
+      if(autoIdle!==undefined && root.cancelIdleCallback) root.cancelIdleCallback(autoIdle);
+      clearTimeout(autoTimer); autoIdle=undefined;
+      if(manual) { autoAttempted=true; notice.hidden=true; noticeChoices=null; }
+    }
+    function showNotice(choices=null,existing=false) {
+      noticeChoices=choices;
+      noticeTitle.textContent=choices?'Matching Songsterr recordings found':existing?'Saved YouTube sync ready':'YouTube sync found on Songsterr';
+      noticeText.textContent=[score()?.artist,score()?.title || context.getItem()?.title].filter(Boolean).join(' — ').slice(0,120);
+      $('tab-sync-notice-use').hidden=!!choices;
+      $('tab-sync-notice-details').textContent=choices?'Choose':'Details';
+      notice.hidden=false;
+    }
+    function readyTimeline() {
+      const first=api()?.tickCache?.masterBars?.[0];
+      return api()?.isReadyForPlayback && first && score()?.masterBars[first.masterBar.index]===first.masterBar;
+    }
+    function maybeDiscover() {
+      if(autoAttempted || !storage?.readyForEdits || !score() || !readyTimeline() || edits) return;
+      autoAttempted=true;
+      if(saved) {
+        if(saved.points.length>=2 && saved.barCount===bars().length) showNotice(null,true);
+        return;
+      }
+      const stamp=generation;
+      const task=async()=>{
+        if(stamp!==generation || saved || !storage?.readyForEdits) return;
+        autoController=new AbortController(); const controller=autoController;
+        const wanted=RetroTabDiscovery.identity(score(),context.getItem()), count=bars().length;
+        if(!wanted && !knownSongsterrId) return;
+        const missKey=(knownSongsterrId || wanted.query)+'|'+count;
+        if((lookupMisses.get(missKey)||0)>Date.now()) return;
+        message('Looking for a synced recording in the background…');
+        try {
+          const result=await RetroTabDiscovery.discover({wanted,count,knownId:knownSongsterrId,signal:controller.signal,
+            request:path=>getJson(path,controller)});
+          if(controller.signal.aborted || stamp!==generation || saved || !storage?.readyForEdits) return;
+          if(result.kind==='match') {
+            const {source,video}=result;
+            saved={version:1,videoId:video.videoId,barCount:count,points:importedPoints(video.points,bars()),
+              source:{songsterrId:source.id,revision:source.revision,artist:source.artist,title:source.title}};
+            url.value='https://www.youtube.com/watch?v='+video.videoId;
+            $('yt-song-link').value=String(source.id);
+            persist(); draw(); showNotice();
+            message('Matching Songsterr video and timing found. Your current audio is unchanged. Choose Use YouTube when ready, and check the first bars.');
+          } else if(result.kind==='choices') {
+            showNotice(result.songs);
+            message('Several recordings could fit this tab. Choose one from the notification or search below.');
+          } else {
+            if(lookupMisses.size>=50) lookupMisses.delete(lookupMisses.keys().next().value);
+            lookupMisses.set(missKey,Date.now()+600000);
+            message('No confident video/timing match found. You can search Songsterr or paste your own YouTube link.');
+          }
+        } catch(error) {
+          if(error.name!=='AbortError' && stamp===generation && !saved)
+            message('Automatic Songsterr lookup is unavailable. You can still use synth or search manually.');
+        }
+      };
+      // Metadata requests start after score/MIDI readiness, without loading YouTube or changing playback.
+      if(root.requestIdleCallback) autoIdle=root.requestIdleCallback(()=>{autoIdle=undefined;task();},{timeout:2000});
+      else autoTimer=setTimeout(task,750);
+    }
+    $('tab-sync-notice-close').onclick=()=>{notice.hidden=true;};
+    $('tab-sync-notice-use').onclick=async()=>{try { await enable(); notice.hidden=true; } catch(e) { message(e.message,true); open(true); }};
+    $('tab-sync-notice-details').onclick=()=>{open(true); if(noticeChoices) renderSongs(noticeChoices); notice.hidden=true;};
+    pointsList.closest('details').addEventListener('toggle',()=>{if(pointsList.closest('details').open) draw();});
     $('tab-songsterr-open').onclick = () => { open(true); panel.scrollIntoView({block:'center'}); $('yt-song-link').focus(); };
     function persist() {
       if (!storage) throw new Error('Open a tab first.');
@@ -100,7 +170,7 @@
           if(!isCurrent()) return;
           saved=value; url.value=value?'https://www.youtube.com/watch?v='+value.videoId:'';
           $('yt-song-link').value=value?.source?.songsterrId?String(value.source.songsterrId):'';
-          message(value?'Saved video and timing loaded. Choose Use YouTube.':'Find the matching Songsterr tab, or paste a YouTube URL. Changes save automatically to the server.'); draw();
+          message(value?'Saved video and timing loaded. Choose Use YouTube.':'Find the matching Songsterr tab, or paste a YouTube URL. Changes save automatically to the server.'); draw(); maybeDiscover();
         },
         onStatus(state) {
           if(!isCurrent()) return;
@@ -108,6 +178,7 @@
           storageStatus.textContent=labels[state]; storageStatus.classList.toggle('is-error',['error','conflict'].includes(state));
           retrySave.hidden=!['error','conflict'].includes(state);
           retrySave.textContent=state==='conflict'?'Load server version':'Retry server save';
+          if(!notice.hidden && ['error','conflict'].includes(state)) noticeText.textContent='This timing could not be saved. Open Details to retry or review the server version.';
         }
       });
       storage=current;
@@ -118,19 +189,19 @@
     root.addEventListener('focus',refreshStorage);
     function draw() {
       pointsList.replaceChildren();
-      const points = saved?.points || [];
-      $('yt-point-count').textContent = points.length + ' timing points · ' + bars().length + ' played bars';
-      for (const p of points) {
+      const points = saved?.points || [], played=bars();
+      $('yt-point-count').textContent = points.length + ' timing points · ' + played.length + ' played bars';
+      for (const p of (!panel.hidden && pointsList.closest('details').open ? points : [])) {
         const li = document.createElement('li');
         li.textContent = 'Bar ' + (p.barIndex + 1) + (p.barOccurence ? ' (repeat ' + (p.barOccurence + 1) + ')' : '') + ': ' + (p.millisecondOffset / 1000).toFixed(2) + 's ';
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove';
         remove.setAttribute('aria-label', 'Remove timing for bar ' + (p.barIndex + 1));
-        remove.onclick = async () => { const stamp=generation; try { await storage.ready(); if(stamp!==generation) return; if (enabled) useSynth(); saved.points = points.filter(x => x !== p); persist(); draw(); } catch(e) { message(e.message,true); } };
+        remove.onclick = async () => { stopDiscovery(true); const stamp=generation; try { await storage.ready(); if(stamp!==generation) return; if (enabled) useSynth(); saved.points = points.filter(x => x !== p); persist(); draw(); } catch(e) { message(e.message,true); } };
         li.append(remove); pointsList.append(li);
       }
       $('yt-enable').disabled = !score() || !saved?.videoId || points.length < 2;
       $('yt-synth').disabled = !enabled;
-      $('yt-bar').max = Math.max(1, bars().length);
+      $('yt-bar').max = Math.max(1, played.length);
       document.querySelectorAll('.tabs-audio-source').forEach(e => { e.textContent = enabled ? 'Sound: YouTube · track mute/solo and transpose affect synth only' : 'Sound: Synth'; });
     }
     function useSynth() {
@@ -226,10 +297,11 @@
     const run = fn => async () => { try { await fn(); } catch(e) { message(e.message, true); } };
     toggle.onclick = () => { if (!panel.hidden && enabled) api().pause(); if(panel.hidden) refreshStorage(); open(panel.hidden); };
     $('yt-close').onclick = () => { if (enabled) api().pause(); if (player?.pauseVideo) player.pauseVideo(); open(false); };
-    $('yt-load').onclick = run(async () => { await cue(); message('Video loaded. Import Songsterr timing or align the first bar below.'); });
-    $('yt-enable').onclick = run(enable);
+    $('yt-load').onclick = run(async () => { stopDiscovery(true); await cue(); message('Video loaded. Import Songsterr timing or align the first bar below.'); });
+    $('yt-enable').onclick = run(async()=>{stopDiscovery(true);await enable();});
     $('yt-synth').onclick = () => { useSynth(); message('Synth playback restored. Your video and timing are still saved.'); };
     $('yt-tab-timing').onclick = run(async () => {
+      stopDiscovery(true);
       if (!storage) throw new Error('Open a tab first.');
       const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       if (!saved?.videoId) await cue();
@@ -249,6 +321,7 @@
       persist(); draw(); message('Tab tempo aligned to ' + offset.toFixed(2) + 's. Add or edit points if the recording drifts.');
     });
     async function addPoint(now) {
+      stopDiscovery(true);
       if (!storage) throw new Error('Open a tab first.');
       const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       if (!saved?.videoId) throw new Error('Load a video first.');
@@ -274,16 +347,21 @@
       finally { clearTimeout(timeout); }
     }
     $('yt-find').onclick = run(async () => {
+      stopDiscovery(true);
       searchController?.abort(); searchController = new AbortController(); const stamp = generation;
       const q = $('yt-song-search').value.trim(); if (q.length < 2) throw new Error('Enter a song title or artist.');
       message('Searching Songsterr…');
       const data = await getJson('/api/songsterr/search?q=' + encodeURIComponent(q), searchController);
       if (stamp !== generation) return;
-      const list = $('yt-song-results'); list.replaceChildren();
-      data.items.forEach(song => { const button = document.createElement('button'); button.type='button'; button.textContent=song.artist + ' — ' + song.title; button.onclick=run(() => loadSong(song.id)); list.append(button); });
+      renderSongs(data.items);
       message(data.items.length ? 'Choose the same arrangement as your tab. A matching title is not a timing guarantee.' : 'No match found. Try fewer words, paste a Songsterr link, or use a YouTube URL.');
     });
+    function renderSongs(items) {
+      const list=$('yt-song-results'); list.replaceChildren();
+      items.forEach(song=>{const button=document.createElement('button');button.type='button';button.textContent=song.artist+' — '+song.title;button.onclick=run(()=>loadSong(song.id));list.append(button);});
+    }
     async function loadSong(id) {
+      stopDiscovery(true);
       $('yt-song-link').value = String(id);
       sourceController?.abort(); sourceController = new AbortController(); const stamp = generation;
       message('Fetching video references and timing…');
@@ -310,6 +388,7 @@
       return loadSong(id);
     });
     $('yt-import-tab').onclick = run(async () => {
+      stopDiscovery(true);
       const text=$('yt-song-link').value.trim(), match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
       const id=/^\d+$/.test(text)?text:match?.[1];
       if(!id) throw new Error('Paste a Songsterr tab URL or numeric ID first.');
@@ -317,9 +396,9 @@
       try {
         const response=await fetch(apiBase()+'/api/songsterr/import',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
         const data=await response.json(); if(!response.ok) throw new Error(data.error||'Import failed.');
-        pendingImportId=id;
+        nextSongsterrId=id;
         await context.importTab(data);
-        message('Tab imported. Use Get video & timing to choose its recording.');
+        message('Tab imported. A synced recording will be checked in the background.');
       } finally { button.disabled=false; }
     });
     $('yt-export').onclick=run(() => {
@@ -327,6 +406,7 @@
       const blob=new Blob([JSON.stringify(saved,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='youtube-sync.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
     });
     $('yt-import-file').onchange=run(async () => {
+      stopDiscovery(true);
       if(!storage) throw new Error('Open a tab first.');
       const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       const file=$('yt-import-file').files[0]; if(!file) return; if(file.size>2000000) throw new Error('Timing file is too large.');
@@ -338,10 +418,10 @@
       url.value='https://www.youtube.com/watch?v='+value.videoId; await cue(); if(stamp!==generation) return; saved=value; persist(); draw(); message('Timing imported. Choose Use YouTube to enable it.');
     });
     return {
-      beforeLoad() { storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); },
+      beforeLoad() { stopDiscovery(); autoAttempted=false; notice.hidden=true; noticeChoices=null; knownSongsterrId=nextSongsterrId; nextSongsterrId=null; storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); },
       scoreLoaded(value, item) {
         original=value.exportFlatSyncPoints();
-        if (!attached.has(api())) { attached.add(api()); api().playerReady.on(()=>{attachHandler(); draw(); if(pendingImportId) { const id=pendingImportId; pendingImportId=null; open(true); run(()=>loadSong(id))(); }}); }
+        if (!attached.has(api())) { attached.add(api()); api().playerReady.on(()=>{attachHandler(); draw(); maybeDiscover();}); }
         saved=null; url.value=''; $('yt-song-link').value='';
         $('yt-song-search').value=[value.artist,value.title || item.title].filter(Boolean).join(' ').slice(0,120);
         $('yt-song-results').replaceChildren(); $('yt-video-results').replaceChildren(); $('yt-bar').value=1; $('yt-seconds').value=0;

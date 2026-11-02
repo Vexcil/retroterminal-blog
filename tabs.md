@@ -209,13 +209,20 @@ tabs_player: true
       <div id="tab-dock-extra" class="tabs-dock-extra" inert></div>
       <button id="tab-dock-expand" class="tabs-dock-expand" type="button" aria-expanded="false" aria-controls="tab-dock-extra" aria-label="Show more player settings" title="Show more player settings">⌃</button>
     </div>
+<aside id="tab-sync-notice" class="tabs-sync-notice" aria-label="YouTube recording found" hidden>
+  <button id="tab-sync-notice-close" type="button" aria-label="Dismiss recording notification">×</button>
+  <p id="tab-sync-notice-title" role="status">YouTube sync found</p>
+  <p id="tab-sync-notice-text"></p>
+  <div><button id="tab-sync-notice-use" type="button">Use YouTube</button><button id="tab-sync-notice-details" type="button">Details</button></div>
+</aside>
   </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-server2">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-auto">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
-<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-server2"></script>
+<script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261101-auto"></script>
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-auto"></script>
 <script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261101-2"></script>
 <script>
 (function() {
