@@ -104,7 +104,7 @@
         },
         onStatus(state) {
           if(!isCurrent()) return;
-          const labels={loading:'Loading saved timing…',saving:'Saving to server…',saved:'Saved on server · available on all devices',empty:'Video links and timing save automatically across your devices.',error:'Server save unavailable. Your browser copy is kept; retry to finish syncing.',conflict:'Another device changed this timing. Export your local copy or load the server version.'};
+          const labels={loading:'Loading saved timingâ€¦',saving:'Saving to serverâ€¦',saved:'Saved on server Â· available on all devices',empty:'Video links and timing save automatically across your devices.',error:'Server save unavailable. Keep this tab open and retry, or export a backup.',conflict:'Another device changed this timing. Export your local copy or load the server version.'};
           storageStatus.textContent=labels[state]; storageStatus.classList.toggle('is-error',['error','conflict'].includes(state));
           retrySave.hidden=!['error','conflict'].includes(state);
           retrySave.textContent=state==='conflict'?'Load server version':'Retry server save';
@@ -119,7 +119,7 @@
     function draw() {
       pointsList.replaceChildren();
       const points = saved?.points || [];
-      $('yt-point-count').textContent = points.length + ' timing points · ' + bars().length + ' played bars';
+      $('yt-point-count').textContent = points.length + ' timing points Â· ' + bars().length + ' played bars';
       for (const p of points) {
         const li = document.createElement('li');
         li.textContent = 'Bar ' + (p.barIndex + 1) + (p.barOccurence ? ' (repeat ' + (p.barOccurence + 1) + ')' : '') + ': ' + (p.millisecondOffset / 1000).toFixed(2) + 's ';
@@ -131,7 +131,7 @@
       $('yt-enable').disabled = !score() || !saved?.videoId || points.length < 2;
       $('yt-synth').disabled = !enabled;
       $('yt-bar').max = Math.max(1, bars().length);
-      document.querySelectorAll('.tabs-audio-source').forEach(e => { e.textContent = enabled ? 'Sound: YouTube · track mute/solo and transpose affect synth only' : 'Sound: Synth'; });
+      document.querySelectorAll('.tabs-audio-source').forEach(e => { e.textContent = enabled ? 'Sound: YouTube Â· track mute/solo and transpose affect synth only' : 'Sound: Synth'; });
     }
     function useSynth() {
       clearInterval(timer); timer = null;
@@ -153,7 +153,7 @@
           const rates = player.getAvailablePlaybackRates();
           if (rates.length && !rates.includes(v)) {
             const nearest = rates.reduce((a,b) => Math.abs(b-v) < Math.abs(a-v) ? b : a);
-            player.setPlaybackRate(nearest); message('YouTube supports ' + rates.join(', ') + '×; using ' + nearest + '×.');
+            player.setPlaybackRate(nearest); message('YouTube supports ' + rates.join(', ') + 'Ã—; using ' + nearest + 'Ã—.');
           } else player.setPlaybackRate(v);
         },
         get masterVolume() { return player.getVolume() / 100; },
@@ -276,24 +276,24 @@
     $('yt-find').onclick = run(async () => {
       searchController?.abort(); searchController = new AbortController(); const stamp = generation;
       const q = $('yt-song-search').value.trim(); if (q.length < 2) throw new Error('Enter a song title or artist.');
-      message('Searching Songsterr…');
+      message('Searching Songsterrâ€¦');
       const data = await getJson('/api/songsterr/search?q=' + encodeURIComponent(q), searchController);
       if (stamp !== generation) return;
       const list = $('yt-song-results'); list.replaceChildren();
-      data.items.forEach(song => { const button = document.createElement('button'); button.type='button'; button.textContent=song.artist + ' — ' + song.title; button.onclick=run(() => loadSong(song.id)); list.append(button); });
+      data.items.forEach(song => { const button = document.createElement('button'); button.type='button'; button.textContent=song.artist + ' â€” ' + song.title; button.onclick=run(() => loadSong(song.id)); list.append(button); });
       message(data.items.length ? 'Choose the same arrangement as your tab. A matching title is not a timing guarantee.' : 'No match found. Try fewer words, paste a Songsterr link, or use a YouTube URL.');
     });
     async function loadSong(id) {
       $('yt-song-link').value = String(id);
       sourceController?.abort(); sourceController = new AbortController(); const stamp = generation;
-      message('Fetching video references and timing…');
+      message('Fetching video references and timingâ€¦');
       const data = await getJson('/api/songsterr/sync?id=' + encodeURIComponent(id), sourceController);
       if (stamp !== generation) return;
       const list = $('yt-video-results'); list.replaceChildren();
       data.videos.forEach(v => {
         const button=document.createElement('button'); button.type='button';
         const count = bars().length, compatible = [count,count+1].includes(v.points.length);
-        button.textContent=(v.feature || 'Full mix') + ' · ' + v.points.length + ' timing points' + (compatible ? '' : ' · different arrangement');
+        button.textContent=(v.feature || 'Full mix') + ' Â· ' + v.points.length + ' timing points' + (compatible ? '' : ' Â· different arrangement');
         button.disabled=!compatible;
         button.onclick=run(async () => {
           const points=importedPoints(v.points,bars()); url.value='https://www.youtube.com/watch?v='+v.videoId;
@@ -302,7 +302,7 @@
           message('Imported ' + points.length + ' points. Check the first bars, then choose Use YouTube. Matching bar counts still need a listening check.');
         }); list.append(button);
       });
-      message(data.videos.length ? data.artist + ' — ' + data.title + '. Choose a compatible recording; different arrangements are disabled.' : 'No synced video found. Paste a YouTube URL and mark timing manually.');
+      message(data.videos.length ? data.artist + ' â€” ' + data.title + '. Choose a compatible recording; different arrangements are disabled.' : 'No synced video found. Paste a YouTube URL and mark timing manually.');
     }
     $('yt-import-song').onclick = run(() => {
       const text=$('yt-song-link').value.trim(); const match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
@@ -313,7 +313,7 @@
       const text=$('yt-song-link').value.trim(), match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
       const id=/^\d+$/.test(text)?text:match?.[1];
       if(!id) throw new Error('Paste a Songsterr tab URL or numeric ID first.');
-      const button=$('yt-import-tab'); button.disabled=true; message('Importing the Songsterr arrangement into your library…');
+      const button=$('yt-import-tab'); button.disabled=true; message('Importing the Songsterr arrangement into your libraryâ€¦');
       try {
         const response=await fetch(apiBase()+'/api/songsterr/import',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
         const data=await response.json(); if(!response.ok) throw new Error(data.error||'Import failed.');
@@ -345,7 +345,7 @@
         saved=null; url.value=''; $('yt-song-link').value='';
         $('yt-song-search').value=[value.artist,value.title || item.title].filter(Boolean).join(' ').slice(0,120);
         $('yt-song-results').replaceChildren(); $('yt-video-results').replaceChildren(); $('yt-bar').value=1; $('yt-seconds').value=0;
-        message('Loading saved video and timing…'); draw(); loadStorage(item);
+        message('Loading saved video and timingâ€¦'); draw(); loadStorage(item);
       }
     };
   }};
