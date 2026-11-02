@@ -62,6 +62,8 @@ tabs_player: true
       <div class="yt-heading"><strong>YouTube sync</strong><button id="yt-close" type="button" aria-label="Close YouTube panel">Close</button></div>
       <div id="yt-embed"></div>
       <p id="yt-status" role="status">Open a tab to link a recording.</p>
+      <p id="yt-storage-status" role="status"></p>
+      <button id="yt-retry-save" type="button" hidden>Retry server save</button>
       <div class="yt-row"><button id="yt-enable" type="button" disabled>Use YouTube</button><button id="yt-synth" type="button" disabled>Use synth</button></div>
       <details open><summary>Find on Songsterr</summary>
         <label>Artist / song<input id="yt-song-search" type="search" maxlength="120"></label>
@@ -80,7 +82,7 @@ tabs_player: true
         <div class="yt-row"><button id="yt-mark" type="button">Mark bar now → next</button><button id="yt-add" type="button">Save entered point</button></div>
       </details>
       <details><summary id="yt-point-count">Timing points</summary><ol id="yt-points"></ol></details>
-      <details><summary>Move timing to another browser</summary><p>Video links and timing are saved on this browser, per tab.</p><button id="yt-export" type="button">Export timing</button><label>Import timing JSON<input id="yt-import-file" type="file" accept="application/json,.json"></label></details>
+      <details><summary>Timing backup</summary><p>Video links and timing save to the server for all your devices. You can also export or import a JSON backup.</p><button id="yt-export" type="button">Export timing</button><label>Import timing JSON<input id="yt-import-file" type="file" accept="application/json,.json"></label></details>
     </aside>
 
     <aside class="at-sidebar" id="track-sidebar" aria-label="Tracks" hidden>
@@ -211,8 +213,9 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-2">
-<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-2"></script>
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-server">
+<script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server"></script>
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-server"></script>
 <script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261101-2"></script>
 <script>
 (function() {

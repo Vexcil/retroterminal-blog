@@ -55,19 +55,67 @@
     const status = $('yt-status'), url = $('yt-url'), pointsList = $('yt-points');
     const apiBase = () => context.getApiBase();
     let player, playerPromise, timer, enabled = false, saved = null, original = [], generation = 0, pendingSeek = null;
-    let searchController, sourceController, pendingImportId;
+    let searchController, sourceController, pendingImportId, storage, cuedVideoId, edits=0;
     const attached = new WeakSet();
     const api = () => context.getApi(), score = () => context.getScore();
     const bars = () => score() ? timeline(api(), score()) : [];
-    const key = () => 'retroterminal.youtube.v1:' + (context.getItem()?.file || '');
+    const storageStatus = $('yt-storage-status'), retrySave = $('yt-retry-save');
     const message = (text, error) => { status.textContent = text; status.classList.toggle('is-error', !!error); };
     function open(value) { panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value)); }
     $('tab-songsterr-open').onclick = () => { open(true); panel.scrollIntoView({block:'center'}); $('yt-song-link').focus(); };
     function persist() {
-      try { localStorage.setItem(key(), JSON.stringify(saved)); }
-      catch (_) { message('Timing works, but browser storage is full or disabled. Export a copy before leaving.', true); return false; }
-      return true;
+      if (!storage) throw new Error('Open a tab first.');
+      storage.save(saved);
     }
+    function loadStorage(item) {
+      const file = item.file, path = RetroTabStorage.canonicalFile(file);
+      const cacheKey = 'retroterminal.youtube.v2:' + path;
+      let current;
+      const isCurrent = () => storage === current;
+      current = RetroTabStorage.createStore({file,
+        readLocal() {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) return JSON.parse(cached);
+          // Migrate the original browser copy only when no server version exists.
+          for (let i=0; i<localStorage.length; i++) {
+            const key=localStorage.key(i), prefix='retroterminal.youtube.v1:';
+            if (key?.startsWith(prefix) && RetroTabStorage.canonicalFile(key.slice(prefix.length))===path)
+              return JSON.parse(localStorage.getItem(key));
+          }
+          return null;
+        },
+        writeLocal(value) { localStorage.setItem(cacheKey,JSON.stringify(value)); },
+        async request(method, body) {
+          const controller=new AbortController(), timeout=setTimeout(()=>controller.abort(),15000);
+          try {
+            const target=apiBase()+'/api/youtube-sync'+(method==='GET'?'?file='+encodeURIComponent(file):'');
+            const response=await fetch(target,{method,credentials:'include',cache:'no-store',signal:controller.signal,
+              ...(method==='POST'?{headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}:{})});
+            const data=await response.json();
+            if(!response.ok) { const error=new Error(data.error||'Unable to reach saved timing.'); error.status=response.status; throw error; }
+            return data;
+          } finally { clearTimeout(timeout); }
+        },
+        onData(value) {
+          if(!isCurrent()) return;
+          saved=value; url.value=value?'https://www.youtube.com/watch?v='+value.videoId:'';
+          $('yt-song-link').value=value?.source?.songsterrId?String(value.source.songsterrId):'';
+          message(value?'Saved video and timing loaded. Choose Use YouTube.':'Find the matching Songsterr tab, or paste a YouTube URL. Changes save automatically to the server.'); draw();
+        },
+        onStatus(state) {
+          if(!isCurrent()) return;
+          const labels={loading:'Loading saved timing…',saving:'Saving to server…',saved:'Saved on server · available on all devices',empty:'Video links and timing save automatically across your devices.',error:'Server save unavailable. Your browser copy is kept; retry to finish syncing.',conflict:'Another device changed this timing. Export your local copy or load the server version.'};
+          storageStatus.textContent=labels[state]; storageStatus.classList.toggle('is-error',['error','conflict'].includes(state));
+          retrySave.hidden=!['error','conflict'].includes(state);
+          retrySave.textContent=state==='conflict'?'Load server version':'Retry server save';
+        }
+      });
+      storage=current;
+      current.load().catch(()=>{});
+    }
+    retrySave.onclick=async()=>{ const current=storage; if(!current) return; retrySave.disabled=true; try { await current.retry(); } catch(e) { message(e.message,true); } finally { retrySave.disabled=false; } };
+    const refreshStorage=()=>{ if(storage && !enabled && !edits && !storage.dirty && !storage.conflict) storage.load().catch(()=>{}); };
+    root.addEventListener('focus',refreshStorage);
     function draw() {
       pointsList.replaceChildren();
       const points = saved?.points || [];
@@ -77,7 +125,7 @@
         li.textContent = 'Bar ' + (p.barIndex + 1) + (p.barOccurence ? ' (repeat ' + (p.barOccurence + 1) + ')' : '') + ': ' + (p.millisecondOffset / 1000).toFixed(2) + 's ';
         const remove = document.createElement('button'); remove.type = 'button'; remove.textContent = 'Remove';
         remove.setAttribute('aria-label', 'Remove timing for bar ' + (p.barIndex + 1));
-        remove.onclick = () => { if (enabled) useSynth(); saved.points = points.filter(x => x !== p); persist(); draw(); };
+        remove.onclick = async () => { const stamp=generation; try { await storage.ready(); if(stamp!==generation) return; if (enabled) useSynth(); saved.points = points.filter(x => x !== p); persist(); draw(); } catch(e) { message(e.message,true); } };
         li.append(remove); pointsList.append(li);
       }
       $('yt-enable').disabled = !score() || !saved?.videoId || points.length < 2;
@@ -123,12 +171,13 @@
       if (playerPromise) return playerPromise;
       if (player) return player;
       playerPromise = (async () => {
+        const id=saved.videoId;
         await loadYouTube();
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => { playerPromise = null; reject(new Error('YouTube player did not become ready.')); }, 20000);
-          player = new YT.Player('yt-embed', {width:'100%', height:'215', videoId:saved.videoId,
+          player = new YT.Player('yt-embed', {width:'100%', height:'215', videoId:id,
             playerVars:{autoplay:0, playsinline:1, origin:location.origin}, events:{
-              onReady() { clearTimeout(timeout); resolve(player); },
+              onReady() { clearTimeout(timeout); cuedVideoId=id; resolve(player); },
               onError(e) { clearTimeout(timeout); message('YouTube cannot play this video (' + e.data + '). Try a different upload; some videos block embedding.', true); if (enabled) useSynth(); reject(new Error('Video unavailable for embedding.')); },
               onStateChange(e) {
                 clearInterval(timer); timer = null;
@@ -143,35 +192,46 @@
             }});
         });
       })();
-      try { return await playerPromise; } catch(e) { playerPromise = null; player?.destroy?.(); player=null; throw e; }
+      try { return await playerPromise; } catch(e) { playerPromise = null; player?.destroy?.(); player=null; cuedVideoId=null; throw e; }
     }
     async function cue() {
-      const id = videoId(url.value);
+      if (!storage) throw new Error('Open a tab first.');
+      const stamp=generation, input=url.value;
+      edits++;
+      try {
+      await storage.ready(); if(stamp!==generation) return false;
+      const id = videoId(input);
       if (!id) throw new Error('Paste a valid YouTube URL or video ID.');
       if (!score()) throw new Error('Open a tab first.');
       if (!saved || saved.videoId !== id) { if (enabled) useSynth(); saved = {version:1, videoId:id, points:[], barCount:bars().length}; }
-      open(true); await ensurePlayer(); player.cueVideoById(id); pendingSeek = null; persist(); draw();
+      url.value='https://www.youtube.com/watch?v='+id;
+      open(true); await ensurePlayer(); if(stamp!==generation) return false;
+      player.cueVideoById(id); cuedVideoId=id; pendingSeek = null; persist(); draw(); return true;
+      } finally { edits--; }
     }
     async function enable() {
       if (!saved?.videoId || saved.points.length < 2) throw new Error('Add at least two timing points, or use the tab timing first.');
       if (saved.barCount !== bars().length) throw new Error('The tab arrangement changed. Import or mark its timing again.');
       const stamp = generation;
       await ensurePlayer(); if (stamp !== generation) return;
+      if(cuedVideoId!==saved.videoId) { player.cueVideoById(saved.videoId); cuedVideoId=saved.videoId; }
       api().pause();
       score().applyFlatSyncPoints(saved.points);
       enabled = true;
       api().settings.player.playerMode = alphaTab.PlayerMode.EnabledExternalMedia;
       api().updateSettings(); attachHandler(); api().updateSyncPoints();
       player.setVolume(api().masterVolume * 100);
-      open(true); draw(); message('YouTube sync ready. Use the normal Play, speed, score selection and Loop controls. Saved in this browser.');
+      open(true); draw(); message('YouTube sync ready. Use the normal Play, speed, score selection and Loop controls.');
     }
     const run = fn => async () => { try { await fn(); } catch(e) { message(e.message, true); } };
-    toggle.onclick = () => { if (!panel.hidden && enabled) api().pause(); open(panel.hidden); };
+    toggle.onclick = () => { if (!panel.hidden && enabled) api().pause(); if(panel.hidden) refreshStorage(); open(panel.hidden); };
     $('yt-close').onclick = () => { if (enabled) api().pause(); if (player?.pauseVideo) player.pauseVideo(); open(false); };
     $('yt-load').onclick = run(async () => { await cue(); message('Video loaded. Import Songsterr timing or align the first bar below.'); });
     $('yt-enable').onclick = run(enable);
     $('yt-synth').onclick = () => { useSynth(); message('Synth playback restored. Your video and timing are still saved.'); };
     $('yt-tab-timing').onclick = run(async () => {
+      if (!storage) throw new Error('Open a tab first.');
+      const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       if (!saved?.videoId) await cue();
       const list = bars(); if (!api().tickCache || !list.length) throw new Error('Wait for the score player to become ready.');
       const offset = Number($('yt-seconds').value);
@@ -188,7 +248,9 @@
       });
       persist(); draw(); message('Tab tempo aligned to ' + offset.toFixed(2) + 's. Add or edit points if the recording drifts.');
     });
-    function addPoint(now) {
+    async function addPoint(now) {
+      if (!storage) throw new Error('Open a tab first.');
+      const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       if (!saved?.videoId) throw new Error('Load a video first.');
       const list = bars(), n = Number($('yt-bar').value) - 1;
       const seconds = now ? player?.getCurrentTime() : Number($('yt-seconds').value);
@@ -265,24 +327,25 @@
       const blob=new Blob([JSON.stringify(saved,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='youtube-sync.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
     });
     $('yt-import-file').onchange=run(async () => {
+      if(!storage) throw new Error('Open a tab first.');
+      const stamp=generation; await storage.ready(); if(stamp!==generation) return;
       const file=$('yt-import-file').files[0]; if(!file) return; if(file.size>2000000) throw new Error('Timing file is too large.');
       const value=JSON.parse(await file.text()), list=bars();
+      if(stamp!==generation) return;
       if(!videoId(value.videoId)||!Array.isArray(value.points)||value.points.length>20000||value.barCount!==list.length) throw new Error('This timing file does not match the current tab.');
       let previous=-1;
       for(const p of value.points) { if(!list.some(b=>b.barIndex===p.barIndex&&b.barOccurence===p.barOccurence)||![0,1].includes(p.barPosition)||!Number.isFinite(p.millisecondOffset)||p.millisecondOffset<0||p.millisecondOffset<=previous) throw new Error('Invalid timing points.'); previous=p.millisecondOffset; }
-      url.value='https://www.youtube.com/watch?v='+value.videoId; await cue(); saved=value; persist(); draw(); message('Timing imported. Choose Use YouTube to enable it.');
+      url.value='https://www.youtube.com/watch?v='+value.videoId; await cue(); if(stamp!==generation) return; saved=value; persist(); draw(); message('Timing imported. Choose Use YouTube to enable it.');
     });
     return {
-      beforeLoad() { generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; open(false); },
+      beforeLoad() { storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); },
       scoreLoaded(value, item) {
         original=value.exportFlatSyncPoints();
         if (!attached.has(api())) { attached.add(api()); api().playerReady.on(()=>{attachHandler(); draw(); if(pendingImportId) { const id=pendingImportId; pendingImportId=null; open(true); run(()=>loadSong(id))(); }}); }
-        try { saved=JSON.parse(localStorage.getItem(key())||'null'); } catch(_){ saved=null; }
-        if(saved && (!videoId(saved.videoId)||!Array.isArray(saved.points))) saved=null;
-        url.value=saved ? 'https://www.youtube.com/watch?v='+saved.videoId : '';
+        saved=null; url.value=''; $('yt-song-link').value='';
         $('yt-song-search').value=[value.artist,value.title || item.title].filter(Boolean).join(' ').slice(0,120);
         $('yt-song-results').replaceChildren(); $('yt-video-results').replaceChildren(); $('yt-bar').value=1; $('yt-seconds').value=0;
-        message(saved ? 'Saved video and timing found. Open YouTube and choose Use YouTube.' : 'Find the matching Songsterr tab, or paste a YouTube URL. Timing is saved per tab in this browser.'); draw();
+        message('Loading saved video and timing…'); draw(); loadStorage(item);
       }
     };
   }};

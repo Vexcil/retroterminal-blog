@@ -3,6 +3,7 @@ import argparse
 from urllib.error import HTTPError, URLError
 from songsterr_bridge import songsterr_response
 from tabs_access import authorized, login, serve_private_viewer, config as access_config
+from youtube_sync_store import get_sync, save_sync
 import cgi
 import json
 import mimetypes
@@ -115,6 +116,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.OK, {'authenticated': authorized(self)})
         if parsed.path != '/healthz' and not authorized(self):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
+        if parsed.path == '/api/youtube-sync':
+            return get_sync(self, parse_qs(parsed.query))
         if parsed.path in ('/api/songsterr/search', '/api/songsterr/sync'):
             try:
                 return self.send_json(HTTPStatus.OK, songsterr_response(parsed.path, parse_qs(parsed.query)))
@@ -161,6 +164,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Origin is not allowed.'})
         if not authorized(self):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
+        if urlparse(self.path).path == '/api/youtube-sync':
+            return save_sync(self)
         if urlparse(self.path).path == '/api/songsterr/import':
             return self.import_songsterr()
         if urlparse(self.path).path != "/upload":

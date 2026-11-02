@@ -40,11 +40,12 @@ class HostAccessTests(unittest.TestCase):
                 result = (response.status, dict(response.getheaders()), response.read())
                 return result
             try:
-                for path in ('/api/tabs', '/data/tabs.json', '/files/example.gp', '/viewer/'):
+                for path in ('/api/tabs', '/data/tabs.json', '/files/example.gp', '/viewer/', '/api/youtube-sync?file=/files/example.gp'):
                     self.assertEqual(request('GET', path)[0], 401)
                     result = request('HEAD', path)
                     self.assertEqual((result[0], result[2]), (401, b''))
                 self.assertEqual(request('POST', '/api/songsterr/import', '{}')[0], 401)
+                self.assertEqual(request('POST', '/api/youtube-sync', '{}')[0], 401)
                 self.assertEqual(json.loads(request('GET', '/api/session')[2]), {'authenticated':False})
                 result = request('POST', '/api/login', json.dumps({'username':'guest', 'password':'test-password'}),
                     {'Content-Type':'application/json', 'Origin':'https://retroterminal.net'})

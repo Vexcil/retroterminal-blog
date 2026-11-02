@@ -16,8 +16,8 @@
 #yt-points { max-height:200px; overflow:auto; padding-left:1.5rem; }
 #yt-points li { margin-bottom:.3rem; }
 #yt-points button { padding:.1rem .3rem; }
-#yt-status { font-size:.65rem; overflow-wrap:anywhere; }
-#yt-status.is-error { color:#ff9e9e; }
+#yt-status,#yt-storage-status { font-size:.65rem; overflow-wrap:anywhere; }
+#yt-status.is-error,#yt-storage-status.is-error { color:#ff9e9e; }
 .tabs-access-gate { position:fixed; inset:0; z-index:1000; display:grid; place-items:center; background:#0c1015; color:#d9ffe4; font:16px system-ui,sans-serif; }
 .tabs-access-gate form { width:min(340px,calc(100vw - 3rem)); padding:1.5rem; border:1px solid #64d88b; border-radius:.5rem; }
 .tabs-access-gate label,.tabs-access-gate input { display:block; width:100%; box-sizing:border-box; margin:.5rem 0; }
