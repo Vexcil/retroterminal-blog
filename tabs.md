@@ -53,11 +53,27 @@ tabs_player: true
       </div>
       <div class="tabs-view-actions">
         <button type="button" id="tabs-library-button">Library</button>
+        <button type="button" id="tab-songsterr-toggle" aria-expanded="false" aria-controls="tab-songsterr-panel">Songsterr</button>
         <button type="button" id="tab-youtube-toggle" aria-expanded="false" aria-controls="tab-youtube-panel">YouTube</button>
         <button type="button" id="tabs-expand-toggle" aria-pressed="false">Focus view</button>
       </div>
     </div>
     <div class="tabs-viewer-shell" id="tabs-viewer-shell">
+    <aside id="tab-songsterr-panel" class="tabs-songsterr-panel" aria-label="Songsterr tab search" hidden>
+      <div class="yt-heading"><strong>Search Songsterr</strong><button id="songsterr-close" type="button" aria-label="Close Songsterr panel">Close</button></div>
+      <form id="songsterr-search-form" class="songsterr-search-form">
+        <label for="songsterr-query">Artist / song<input id="songsterr-query" type="search" maxlength="120" placeholder="Search for tabs…" required minlength="2"></label>
+        <button id="songsterr-search" type="submit">Search</button>
+      </form>
+      <p id="songsterr-status" role="status">Search for a song, then import an arrangement. Existing tabs open without adding a duplicate.</p>
+      <div id="songsterr-results" class="songsterr-results" aria-label="Songsterr results" aria-busy="false"></div>
+      <details><summary>Have a Songsterr link?</summary>
+        <form id="songsterr-link-form">
+          <label for="songsterr-link">Tab URL or song ID<input id="songsterr-link" type="text" placeholder="https://www.songsterr.com/…" required></label>
+          <button id="songsterr-link-import" type="submit">Import / open tab</button>
+        </form>
+      </details>
+    </aside>
     <aside id="tab-youtube-panel" class="tabs-youtube-panel" aria-label="YouTube synchronization" hidden>
       <div class="yt-heading"><strong>YouTube sync</strong><button id="yt-close" type="button" aria-label="Close YouTube panel">Close</button></div>
       <p id="yt-status" role="status">Open a tab to link a recording.</p>
@@ -228,10 +244,10 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-controls2">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-songsterr-search">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
 <script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261101-auto"></script>
-<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-controls"></script>
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-songsterr-search"></script>
 <script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261103-users"></script>
 <script>
 (function() {

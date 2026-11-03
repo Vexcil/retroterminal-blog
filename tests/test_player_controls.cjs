@@ -6,6 +6,7 @@ const root=path.join(__dirname,'..');
 test('closing sync settings preserves the iframe, selected source and active external playback',async()=>{
  const dom=new JSDOM(fs.readFileSync(path.join(root,'tabs.md'),'utf8'),{url:'https://retroterminal.net/tabs/',runScripts:'outside-only'});
  const w=dom.window,$=id=>w.document.getElementById(id);
+ w.HTMLElement.prototype.scrollIntoView=function(){};
  const points=[{barIndex:0,barOccurence:0,barPosition:0,millisecondOffset:0},{barIndex:1,barOccurence:0,barPosition:0,millisecondOffset:1000}];
  const saved={version:1,videoId:'M7lc1UVf-VE',barCount:2,points};
  let pauses=0,playing=false,video;
@@ -38,6 +39,12 @@ test('closing sync settings preserves the iframe, selected source and active ext
    assert.equal($('tab-youtube-player').hidden,false);
    assert.equal(playing,true);assert.equal(video.state,1);assert.equal(pauses,pauseCount);
    assert.equal(frame.isConnected,true);assert.equal(video.frame,frame);
+   $('tab-songsterr-toggle').click();
+   assert.equal($('tab-songsterr-panel').hidden,false);
+   assert.equal(w.document.activeElement,$('songsterr-query'));
+   $('songsterr-close').click();
+   assert.equal(playing,true);assert.equal(video.state,1);assert.equal(pauses,pauseCount);
+   assert.equal(video.frame,frame);assert.equal(frame.isConnected,true);
    api.player.output.handler.play();
    assert.equal($('tab-youtube-panel').hidden,true,'Play must not reopen settings');
    $('yt-synth').click();
@@ -48,5 +55,53 @@ test('closing sync settings preserves the iframe, selected source and active ext
    assert.equal($('tab-youtube-player').hidden,true);
    assert.ok($('tab-songsterr-open').compareDocumentPosition($('tab-upload-button')) & w.Node.DOCUMENT_POSITION_FOLLOWING);
    assert.equal($('yt-enable').closest('.tabs-playback-control'),$('tab-dock-play').parentElement);
+ } finally { sync.beforeLoad();dom.window.close(); }
+});
+
+test('Songsterr search works before a tab is loaded and opens duplicate-safe imports',async()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'tabs.md'),'utf8'),{url:'https://retroterminal.net/tabs/',runScripts:'outside-only'});
+ const w=dom.window,$=id=>w.document.getElementById(id);
+ w.HTMLElement.prototype.scrollIntoView=function(){};
+ let imported=null,requests=[],failSearch=true;
+ w.fetch=async(url,options={})=>{
+   requests.push({url,options});
+   if(url.includes('/api/songsterr/search')) return failSearch
+     ? {ok:false,json:async()=>({error:'Search unavailable. Try again.'})}
+     : {ok:true,json:async()=>({items:[{id:5532,artist:'Death',title:'Scavenger Of Human Sorrow'}]})};
+   assert.equal(url,'/api/songsterr/import');
+   return {ok:true,json:async()=>({file:'uploads/Death.gp',alreadyExists:true})};
+ };
+ w.eval(fs.readFileSync(path.join(root,'assets/tab-youtube-sync.js'),'utf8'));
+ const sync=w.RetroTabSync.create({getApi:()=>null,getScore:()=>null,getItem:()=>null,getApiBase:()=>'',
+   async importTab(item){imported=item;sync.beforeLoad();}});
+ try {
+   assert.deepEqual(Array.from(w.document.querySelectorAll('.tabs-view-actions button'),b=>b.textContent),['Library','Songsterr','YouTube','Focus view']);
+   $('tab-songsterr-toggle').click();
+   assert.equal($('tab-songsterr-toggle').getAttribute('aria-expanded'),'true');
+   assert.equal(w.document.activeElement,$('songsterr-query'));
+   $('songsterr-query').value='Death Scavenger';
+   const submit=new w.Event('submit',{cancelable:true});
+   await $('songsterr-search-form').onsubmit(submit);
+   assert.equal(submit.defaultPrevented,true,'Enter submits the form without navigation');
+   assert.match($('songsterr-status').textContent,/Search unavailable/);
+   failSearch=false;
+   await $('songsterr-search-form').onsubmit(new w.Event('submit'));
+   assert.equal($('songsterr-results').getAttribute('aria-busy'),'false');
+   assert.match($('songsterr-results').textContent,/Death — Scavenger Of Human Sorrow/);
+   await $('songsterr-results').querySelector('button').onclick();
+   assert.equal(imported.alreadyExists,true);
+   assert.equal(requests.at(-1).options.method,'POST');
+   assert.equal(requests.at(-1).options.credentials,'include');
+   assert.deepEqual(JSON.parse(requests.at(-1).options.body),{id:'5532'});
+   assert.equal($('tab-songsterr-panel').hidden,true);
+   assert.equal($('tab-songsterr-toggle').getAttribute('aria-expanded'),'false');
+   assert.equal(requests.some(r=>r.url.includes('/api/songsterr/sync')),false,'searching for tabs does not fetch video timing');
+   $('tab-songsterr-open').click();
+   $('songsterr-query').dispatchEvent(new w.KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+   assert.equal($('tab-songsterr-panel').hidden,true);
+   assert.equal(w.document.activeElement,$('tab-songsterr-toggle'));
+   $('tab-songsterr-toggle').click();$('tab-youtube-toggle').click();
+   assert.equal($('tab-songsterr-panel').hidden,true);
+   assert.equal($('tab-youtube-panel').hidden,false);
  } finally { sync.beforeLoad();dom.window.close(); }
 });

@@ -53,11 +53,14 @@
   root.RetroTabSync = {core, create(context) {
     const $ = id => document.getElementById(id);
     const panel = $('tab-youtube-panel'), toggle = $('tab-youtube-toggle');
+    const songsterrPanel = $('tab-songsterr-panel'), songsterrToggle = $('tab-songsterr-toggle');
+    const songsterrStatus = $('songsterr-status'), songsterrResults = $('songsterr-results');
     const videoPanel = $('tab-youtube-player'), playbackControl = document.querySelector('.tabs-playback-control');
     const status = $('yt-status'), url = $('yt-url'), pointsList = $('yt-points');
     const apiBase = () => context.getApiBase();
     let player, playerPromise, timer, enabled = false, saved = null, original = [], generation = 0, pendingSeek = null;
     let searchController, sourceController, nextSongsterrId, knownSongsterrId, storage, cuedVideoId, edits=0;
+    let catalogController, importing = false;
     let autoController,autoIdle,autoTimer,autoAttempted=false,noticeChoices=null;
     const attached = new WeakSet();
     const api = () => context.getApi(), score = () => context.getScore();
@@ -65,12 +68,25 @@
     const storageStatus = $('yt-storage-status'), retrySave = $('yt-retry-save');
     const notice=$('tab-sync-notice'),noticeTitle=$('tab-sync-notice-title'),noticeText=$('tab-sync-notice-text');
     const message = (text, error) => { status.textContent = text; status.classList.toggle('is-error', !!error); };
+    const catalogMessage = (text, error) => { songsterrStatus.textContent = text; songsterrStatus.classList.toggle('is-error', !!error); };
     function open(value) {
+      if(value) openCatalog(false);
       panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value));
       if(value) draw();
       // The iframe stays mounted in its own visible player when settings close.
       videoPanel.hidden = !player || (!value && !enabled);
     }
+    function openCatalog(value) {
+      if(value) open(false);
+      else { catalogController?.abort(); catalogController=null; songsterrResults.setAttribute('aria-busy','false'); }
+      songsterrPanel.hidden = !value; songsterrToggle.setAttribute('aria-expanded', String(value));
+      if(value) { songsterrPanel.scrollIntoView({block:'nearest'}); $('songsterr-query').focus({preventScroll:true}); }
+    }
+    songsterrToggle.onclick = () => openCatalog(songsterrPanel.hidden);
+    $('songsterr-close').onclick = () => { openCatalog(false); songsterrToggle.focus({preventScroll:true}); };
+    songsterrPanel.addEventListener('keydown', event => {
+      if(event.key==='Escape') { event.preventDefault(); event.stopPropagation(); openCatalog(false); songsterrToggle.focus({preventScroll:true}); }
+    });
     function stopDiscovery(manual=false) {
       autoController?.abort();
       if(autoIdle!==undefined && root.cancelIdleCallback) root.cancelIdleCallback(autoIdle);
@@ -138,7 +154,7 @@
     $('tab-sync-notice-use').onclick=async()=>{try { await enable(); notice.hidden=true; } catch(e) { message(e.message,true); open(true); }};
     $('tab-sync-notice-details').onclick=()=>{open(true); if(noticeChoices) renderSongs(noticeChoices); notice.hidden=true;};
     pointsList.closest('details').addEventListener('toggle',()=>{if(pointsList.closest('details').open) draw();});
-    $('tab-songsterr-open').onclick = () => { open(true); panel.scrollIntoView({block:'center'}); $('yt-song-link').focus(); };
+    $('tab-songsterr-open').onclick = () => openCatalog(true);
     function persist() {
       if (!storage) throw new Error('Open a tab first.');
       storage.save(saved);
@@ -365,6 +381,40 @@
       try { const response = await fetch(apiBase() + path, {signal:controller.signal,credentials:'include'}); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Songsterr request failed.'); return data; }
       finally { clearTimeout(timeout); }
     }
+    const catalogRun = fn => async event => {
+      event?.preventDefault();
+      try { await fn(); } catch(error) { if(error.name!=='AbortError') catalogMessage(error.message,true); }
+    };
+    $('songsterr-search-form').onsubmit = catalogRun(async () => {
+      const query=$('songsterr-query').value.trim();
+      if(query.length<2) throw new Error('Enter a song title or artist.');
+      catalogController?.abort(); const controller=catalogController=new AbortController();
+      songsterrResults.replaceChildren(); songsterrResults.setAttribute('aria-busy','true');
+      catalogMessage('Searching Songsterr…');
+      try {
+        const data=await getJson('/api/songsterr/search?q='+encodeURIComponent(query),controller);
+        if(controller.signal.aborted) return;
+        data.items.forEach(song => {
+          const row=document.createElement('div'), title=document.createElement('span'), button=document.createElement('button');
+          row.className='songsterr-result'; title.textContent=song.artist+' — '+song.title;
+          button.type='button'; button.textContent='Import / open';
+          button.setAttribute('aria-label','Import or open '+song.artist+' — '+song.title);
+          button.onclick=catalogRun(()=>importSong(String(song.id),button,catalogMessage));
+          row.append(title,button); songsterrResults.append(row);
+        });
+        catalogMessage(data.items.length ? 'Choose an arrangement to open. Tabs already in your library are reused.' : 'No tabs found. Try fewer words or paste a Songsterr link below.');
+      } catch(error) {
+        if(catalogController===controller) throw error.name==='AbortError' ? new Error('Songsterr search timed out. Try again.') : error;
+      } finally { if(catalogController===controller) songsterrResults.setAttribute('aria-busy','false'); }
+    });
+    function songsterrId(text) {
+      text=text.trim();
+      const match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
+      const id=/^\d+$/.test(text)?text:match?.[1];
+      if(!id) throw new Error('Paste a Songsterr tab URL or numeric song ID.');
+      return id;
+    }
+    $('songsterr-link-form').onsubmit=catalogRun(()=>importSong(songsterrId($('songsterr-link').value),$('songsterr-link-import'),catalogMessage));
     $('yt-find').onclick = run(async () => {
       stopDiscovery(true);
       searchController?.abort(); searchController = new AbortController(); const stamp = generation;
@@ -406,20 +456,19 @@
       const id=/^\d+$/.test(text) ? text : match?.[1]; if(!id) throw new Error('Paste a Songsterr tab URL or numeric song ID.');
       return loadSong(id);
     });
-    $('yt-import-tab').onclick = run(async () => {
+    async function importSong(id, button, report=message) {
+      if(importing) return;
       stopDiscovery(true);
-      const text=$('yt-song-link').value.trim(), match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
-      const id=/^\d+$/.test(text)?text:match?.[1];
-      if(!id) throw new Error('Paste a Songsterr tab URL or numeric ID first.');
-      const button=$('yt-import-tab'); button.disabled=true; message('Importing the Songsterr arrangement into your library…');
+      importing=true; button.disabled=true; report('Opening the Songsterr arrangement in your library…');
       try {
         const response=await fetch(apiBase()+'/api/songsterr/import',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
         const data=await response.json(); if(!response.ok) throw new Error(data.error||'Import failed.');
         nextSongsterrId=id;
         await context.importTab(data);
-        message(data.alreadyExists ? 'Already in your library. Opened the existing tab without importing a duplicate.' : 'Tab imported. A synced recording will be checked in the background.');
-      } finally { button.disabled=false; }
-    });
+        report(data.alreadyExists ? 'Already in your library. Opened the existing tab without importing a duplicate.' : 'Tab imported. A synced recording will be checked in the background.');
+      } finally { importing=false; button.disabled=false; }
+    }
+    $('yt-import-tab').onclick = run(()=>importSong(songsterrId($('yt-song-link').value),$('yt-import-tab')));
     $('yt-export').onclick=run(() => {
       if(!saved) throw new Error('No video timing to export.');
       const blob=new Blob([JSON.stringify(saved,null,2)],{type:'application/json'}), a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='youtube-sync.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
@@ -437,7 +486,7 @@
       url.value='https://www.youtube.com/watch?v='+value.videoId; await cue(); if(stamp!==generation) return; saved=value; persist(); draw(); message('Timing imported. Choose Use YouTube to enable it.');
     });
     return {
-      beforeLoad() { stopDiscovery(); autoAttempted=false; notice.hidden=true; noticeChoices=null; knownSongsterrId=nextSongsterrId; nextSongsterrId=null; storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); },
+      beforeLoad() { stopDiscovery(); autoAttempted=false; notice.hidden=true; noticeChoices=null; knownSongsterrId=nextSongsterrId; nextSongsterrId=null; storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); openCatalog(false); },
       scoreLoaded(value, item) {
         original=value.exportFlatSyncPoints();
         if (!attached.has(api())) { attached.add(api()); api().playerReady.on(()=>{attachHandler(); draw(); maybeDiscover();}); }
