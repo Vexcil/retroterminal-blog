@@ -228,7 +228,7 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-controls">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-controls2">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
 <script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261101-auto"></script>
 <script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-controls"></script>

@@ -1,4 +1,5 @@
 .tabs-youtube-panel { flex:0 0 380px; width:380px; min-width:0; max-height:72vh; overflow:auto; box-sizing:border-box; padding:.75rem; border:1px solid var(--border); background:var(--bg); font-size:.7rem; line-height:1.6; }
+@media(min-width:900px) { .page-tabs .tabs-controls { grid-template-columns:minmax(180px,2fr) minmax(155px,1fr) minmax(160px,1fr) auto auto; } }
 .focused .tabs-youtube-panel { max-height:100%; }
 .tabs-youtube-panel .yt-heading,.tabs-youtube-panel .yt-row { display:flex; align-items:center; gap:.4rem; justify-content:space-between; margin-bottom:.6rem; }
 .tabs-youtube-panel .yt-row>* { flex:1; min-width:0; }
