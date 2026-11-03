@@ -53,6 +53,7 @@
   root.RetroTabSync = {core, create(context) {
     const $ = id => document.getElementById(id);
     const panel = $('tab-youtube-panel'), toggle = $('tab-youtube-toggle');
+    const videoPanel = $('tab-youtube-player'), playbackControl = document.querySelector('.tabs-playback-control');
     const status = $('yt-status'), url = $('yt-url'), pointsList = $('yt-points');
     const apiBase = () => context.getApiBase();
     let player, playerPromise, timer, enabled = false, saved = null, original = [], generation = 0, pendingSeek = null;
@@ -64,7 +65,12 @@
     const storageStatus = $('yt-storage-status'), retrySave = $('yt-retry-save');
     const notice=$('tab-sync-notice'),noticeTitle=$('tab-sync-notice-title'),noticeText=$('tab-sync-notice-text');
     const message = (text, error) => { status.textContent = text; status.classList.toggle('is-error', !!error); };
-    function open(value) { panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value)); if(value) draw(); }
+    function open(value) {
+      panel.hidden = !value; toggle.setAttribute('aria-expanded', String(value));
+      if(value) draw();
+      // The iframe stays mounted in its own visible player when settings close.
+      videoPanel.hidden = !player || (!value && !enabled);
+    }
     function stopDiscovery(manual=false) {
       autoController?.abort();
       if(autoIdle!==undefined && root.cancelIdleCallback) root.cancelIdleCallback(autoIdle);
@@ -199,8 +205,14 @@
         remove.onclick = async () => { stopDiscovery(true); const stamp=generation; try { await storage.ready(); if(stamp!==generation) return; if (enabled) useSynth(); saved.points = points.filter(x => x !== p); persist(); draw(); } catch(e) { message(e.message,true); } };
         li.append(remove); pointsList.append(li);
       }
-      $('yt-enable').disabled = !score() || !saved?.videoId || points.length < 2;
-      $('yt-synth').disabled = !enabled;
+      $('yt-enable').disabled = !readyTimeline() || !saved?.videoId || points.length < 2 || saved.barCount !== played.length;
+      $('yt-enable').title = $('yt-enable').disabled ? 'Open YouTube sync settings to choose a recording and timing' : 'Use the linked YouTube recording';
+      $('yt-synth').disabled = !score();
+      $('yt-enable').setAttribute('aria-pressed', String(enabled));
+      $('yt-synth').setAttribute('aria-pressed', String(!enabled));
+      playbackControl.dataset.source = enabled ? 'youtube' : 'synth';
+      $('tab-audio-source-status').textContent = 'Playback source: ' + (enabled ? 'YouTube' : 'Synth');
+      videoPanel.hidden = !player || (panel.hidden && !enabled);
       $('yt-bar').max = Math.max(1, played.length);
       document.querySelectorAll('.tabs-audio-source').forEach(e => { e.textContent = enabled ? 'Sound: YouTube · track mute/solo and transpose affect synth only' : 'Sound: Synth'; });
     }
@@ -234,7 +246,7 @@
           if (state === 1 || state === 2) player.seekTo(ms / 1000, true);
           else pendingSeek = ms / 1000;
         },
-        play() { open(true); player.playVideo(); if (pendingSeek !== null) { player.seekTo(pendingSeek, true); pendingSeek = null; } },
+        play() { videoPanel.hidden = false; player.playVideo(); if (pendingSeek !== null) { player.seekTo(pendingSeek, true); pendingSeek = null; } },
         pause() { player.pauseVideo(); }
       };
     }
@@ -244,12 +256,13 @@
       playerPromise = (async () => {
         const id=saved.videoId;
         await loadYouTube();
+        videoPanel.hidden = false;
         return new Promise((resolve, reject) => {
           const timeout = setTimeout(() => { playerPromise = null; reject(new Error('YouTube player did not become ready.')); }, 20000);
           player = new YT.Player('yt-embed', {width:'100%', height:'215', videoId:id,
             playerVars:{autoplay:0, playsinline:1, origin:location.origin}, events:{
               onReady() { clearTimeout(timeout); cuedVideoId=id; resolve(player); },
-              onError(e) { clearTimeout(timeout); message('YouTube cannot play this video (' + e.data + '). Try a different upload; some videos block embedding.', true); if (enabled) useSynth(); reject(new Error('Video unavailable for embedding.')); },
+              onError(e) { clearTimeout(timeout); if (enabled) useSynth(); open(true); message('YouTube cannot play this video (' + e.data + '). Try a different upload; some videos block embedding.', true); reject(new Error('Video unavailable for embedding.')); },
               onStateChange(e) {
                 clearInterval(timer); timer = null;
                 if (!enabled || !api()) return;
@@ -263,7 +276,11 @@
             }});
         });
       })();
-      try { return await playerPromise; } catch(e) { playerPromise = null; player?.destroy?.(); player=null; cuedVideoId=null; throw e; }
+      try { return await playerPromise; } catch(e) {
+        playerPromise = null; player?.destroy?.(); player=null; cuedVideoId=null; videoPanel.hidden=true;
+        if (!$('yt-embed')) { const mount=document.createElement('div'); mount.id='yt-embed'; videoPanel.append(mount); }
+        throw e;
+      }
     }
     async function cue() {
       if (!storage) throw new Error('Open a tab first.');
@@ -281,6 +298,7 @@
       } finally { edits--; }
     }
     async function enable() {
+      if (!readyTimeline()) throw new Error('Wait for the tab player to become ready.');
       if (!saved?.videoId || saved.points.length < 2) throw new Error('Add at least two timing points, or use the tab timing first.');
       if (saved.barCount !== bars().length) throw new Error('The tab arrangement changed. Import or mark its timing again.');
       const stamp = generation;
@@ -292,14 +310,15 @@
       api().settings.player.playerMode = alphaTab.PlayerMode.EnabledExternalMedia;
       api().updateSettings(); attachHandler(); api().updateSyncPoints();
       player.setVolume(api().masterVolume * 100);
-      open(true); draw(); message('YouTube sync ready. Use the normal Play, speed, score selection and Loop controls.');
+      draw(); message('YouTube sync ready. Use the normal Play, speed, score selection and Loop controls.');
     }
     const run = fn => async () => { try { await fn(); } catch(e) { message(e.message, true); } };
-    toggle.onclick = () => { if (!panel.hidden && enabled) api().pause(); if(panel.hidden) refreshStorage(); open(panel.hidden); };
-    $('yt-close').onclick = () => { if (enabled) api().pause(); if (player?.pauseVideo) player.pauseVideo(); open(false); };
+    toggle.onclick = () => { if(panel.hidden) refreshStorage(); open(panel.hidden); };
+    $('yt-close').onclick = () => { open(false); };
+    $('yt-open-settings').onclick = () => open(true);
     $('yt-load').onclick = run(async () => { stopDiscovery(true); await cue(); message('Video loaded. Import Songsterr timing or align the first bar below.'); });
-    $('yt-enable').onclick = run(async()=>{stopDiscovery(true);await enable();});
-    $('yt-synth').onclick = () => { useSynth(); message('Synth playback restored. Your video and timing are still saved.'); };
+    $('yt-enable').onclick = run(async()=>{if(enabled) return; stopDiscovery(true);await enable();});
+    $('yt-synth').onclick = () => { if(!enabled) return; useSynth(); message('Synth playback restored. Your video and timing are still saved.'); };
     $('yt-tab-timing').onclick = run(async () => {
       stopDiscovery(true);
       if (!storage) throw new Error('Open a tab first.');
@@ -398,7 +417,7 @@
         const data=await response.json(); if(!response.ok) throw new Error(data.error||'Import failed.');
         nextSongsterrId=id;
         await context.importTab(data);
-        message('Tab imported. A synced recording will be checked in the background.');
+        message(data.alreadyExists ? 'Already in your library. Opened the existing tab without importing a duplicate.' : 'Tab imported. A synced recording will be checked in the background.');
       } finally { button.disabled=false; }
     });
     $('yt-export').onclick=run(() => {

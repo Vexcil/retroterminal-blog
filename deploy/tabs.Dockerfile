@@ -1,5 +1,5 @@
 FROM python:3.12-slim
-RUN pip install --no-cache-dir 'requests>=2.32.5,<3'
+RUN pip install --no-cache-dir 'requests>=2.32.5,<3' 'bcrypt>=4.2,<6'
 WORKDIR /app
 COPY build_tab_index.py /app/
 COPY --chown=1000:1000 scripts /app/scripts

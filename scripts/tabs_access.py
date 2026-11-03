@@ -53,6 +53,22 @@ def signature(body, settings):
     return hmac.new(bytes.fromhex(settings['session_key']), body.encode(), hashlib.sha256).hexdigest()
 
 
+def accounts(settings):
+    """Keep the original account and its sessions valid when adding named users."""
+    users = dict(settings.get('users', {}))
+    if settings.get('username'):
+        users.setdefault(settings['username'], settings)
+    return users
+
+
+def password_matches(password, account):
+    if account.get('algorithm') == 'bcrypt':
+        import bcrypt
+        return bcrypt.checkpw(password.encode(), account['password_hash'].encode())
+    digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(account['salt']), 260000).hex()
+    return hmac.compare_digest(digest, account['password_hash'])
+
+
 def authorized(handler):
     settings = config()
     if not settings:
@@ -63,7 +79,7 @@ def authorized(handler):
         cookies = SimpleCookie(handler.headers.get('Cookie', ''))
         body, digest = cookies['rt_tabs_session'].value.rsplit('.', 1)
         username, expiry = base64.urlsafe_b64decode(body + '=' * (-len(body) % 4)).decode().split('|')
-        return username == settings['username'] and time.time() < int(expiry) and hmac.compare_digest(signature(body, settings), digest)
+        return username in accounts(settings) and time.time() < int(expiry) and hmac.compare_digest(signature(body, settings), digest)
     except (ValueError, KeyError, TypeError, CookieError):
         return False
 
@@ -93,13 +109,14 @@ def login(handler):
         username, password = data.get('username', ''), data.get('password', '')
         if not isinstance(username, str) or not isinstance(password, str) or len(password) > 512:
             raise ValueError()
-        digest = hashlib.pbkdf2_hmac('sha256', password.encode(), bytes.fromhex(settings['salt']), 260000).hex()
-        valid = hmac.compare_digest(digest, settings['password_hash']) and hmac.compare_digest(username, settings['username'])
-    except (ValueError, TypeError, AttributeError):
+        account = accounts(settings).get(username)
+        # Unknown users still perform password work, without accepting a fallback account.
+        valid = password_matches(password, account or settings) and account is not None
+    except (ValueError, TypeError, AttributeError, KeyError):
         valid = False
     if not valid:
         return handler.send_json(401, {'error': 'Incorrect username or password.'})
-    body = base64.urlsafe_b64encode((settings['username'] + '|' + str(int(time.time()) + 2592000)).encode()).decode().rstrip('=')
+    body = base64.urlsafe_b64encode((username + '|' + str(int(time.time()) + 2592000)).encode()).decode().rstrip('=')
     token = body + '.' + signature(body, settings)
     payload = b'{"authenticated":true}'
     handler.send_response(200)

@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'scripts'))
 import tabs_access as access
+import bcrypt
 
 class AccessTests(unittest.TestCase):
     def setUp(self):
@@ -44,4 +45,16 @@ class AccessTests(unittest.TestCase):
         self.assertFalse(access.authorized(self.handler(headers={'Cookie':'rt_tabs_session='+cookie(1)})))
     def test_missing_config_fails_closed(self):
         self.path.unlink(); self.assertFalse(access.authorized(self.handler('100.70.1.2')))
+
+    def test_added_bcrypt_user_preserves_guest_sessions_and_checks_each_password(self):
+        self.settings['password_hash']=hashlib.pbkdf2_hmac('sha256',b'guest-pass',bytes.fromhex(self.settings['salt']),260000).hex()
+        self.settings['users']={'vex':{'algorithm':'bcrypt','password_hash':bcrypt.hashpw(b'vex-pass',bcrypt.gensalt(rounds=4)).decode()}}
+        self.path.write_text(json.dumps(self.settings))
+        for username,password in [('guest','guest-pass'),('vex','vex-pass')]:
+            self.assertTrue(access.password_matches(password,access.accounts(self.settings)[username]))
+            self.assertFalse(access.password_matches('wrong',access.accounts(self.settings)[username]))
+            body=base64.urlsafe_b64encode((username+'|'+str(int(time.time())+100)).encode()).decode().rstrip('=')
+            cookie=body+'.'+access.signature(body,self.settings)
+            self.assertTrue(access.authorized(self.handler(headers={'Cookie':'rt_tabs_session='+cookie})))
+        self.assertEqual(set(access.accounts(self.settings)),{'guest','vex'})
 if __name__=='__main__': unittest.main()

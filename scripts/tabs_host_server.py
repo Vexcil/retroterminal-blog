@@ -4,6 +4,7 @@ from urllib.error import HTTPError, URLError
 from songsterr_bridge import songsterr_response
 from tabs_access import authorized, login, serve_private_viewer, config as access_config
 from youtube_sync_store import get_sync, save_sync
+from songsterr_import_store import find_import, remember_import
 import cgi
 import json
 import mimetypes
@@ -460,21 +461,25 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             song_id = str(json.loads(self.rfile.read(length)).get('id', ''))
             if not re.fullmatch(r'[1-9][0-9]{0,9}', song_id):
                 raise ValueError('Invalid Songsterr song ID.')
-            from songsterr_vendor.gen_gp import fetch_all_tracks, generate_gp
-            # The upstream converter reads its bundled GP template via utils.
-            meta, tracks = fetch_all_tracks(int(song_id))
-            name = self.sanitize_filename(str(meta.get('artist', '')) + ' - ' + str(meta.get('title', song_id)) + '.gp')
-            with tempfile.TemporaryDirectory() as folder:
-                generated = Path(folder) / 'import.gp'
-                generate_gp(tracks, generated, meta)
-                data = generated.read_bytes()
-            if len(data) > MAX_UPLOAD_BYTES:
-                raise ValueError('Generated tab is too large.')
             with self.upload_lock:
+                # Check before fetching/converting, under the same lock as file creation.
+                existing = find_import(self, int(song_id))
+                if existing:
+                    return self.send_json(HTTPStatus.OK, {'title': existing.stem, 'file': self.make_public_file_url(existing), 'songsterr_id': int(song_id), 'alreadyExists': True})
+                from songsterr_vendor.gen_gp import fetch_all_tracks, generate_gp
+                meta, tracks = fetch_all_tracks(int(song_id))
+                name = self.sanitize_filename(str(meta.get('artist', '')) + ' - ' + str(meta.get('title', song_id)) + '.gp')
+                with tempfile.TemporaryDirectory() as folder:
+                    generated = Path(folder) / 'import.gp'
+                    generate_gp(tracks, generated, meta)
+                    data = generated.read_bytes()
+                if len(data) > MAX_UPLOAD_BYTES:
+                    raise ValueError('Generated tab is too large.')
                 destination_dir = self.files_dir / UPLOAD_SUBDIR
                 destination_dir.mkdir(parents=True, exist_ok=True)
                 destination = self.make_unique_destination(destination_dir, name)
                 destination.write_bytes(data)
+                remember_import(self, int(song_id), destination)
                 self.rebuild_index()
             return self.send_json(HTTPStatus.CREATED, {'title': destination.stem, 'file': self.make_public_file_url(destination), 'songsterr_id': int(song_id)})
         except (ValueError, TypeError, json.JSONDecodeError) as error:

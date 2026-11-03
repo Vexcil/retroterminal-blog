@@ -14,7 +14,7 @@ window.RetroTabAccess = {async start(base) {
   }
   return new Promise(resolve=>{
     const gate=document.createElement('div'); gate.className='tabs-access-gate'; gate.setAttribute('role','dialog'); gate.setAttribute('aria-modal','true'); gate.setAttribute('aria-label','Private tabs sign-in');
-    gate.innerHTML='<form><h1>Private tab player</h1><p>Sign in to open the library.</p><label>Username<input name="username" autocomplete="username" required></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><p role="status"></p><p><a href="'+tailnet+'/viewer/">Open through tailnet</a></p></form>';
+    gate.innerHTML='<form><h1>Private tab player</h1><p>Sign in with your vex or guest account.</p><label>Username<input name="username" autocomplete="username" list="tabs-login-users" placeholder="vex or guest" required><datalist id="tabs-login-users"><option value="vex"><option value="guest"></datalist></label><label>Password<input name="password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in</button><p role="status"></p><p><a href="'+tailnet+'/viewer/">Open through tailnet</a></p></form>';
     document.body.append(gate); gate.querySelector('input').focus();
     gate.querySelector('form').onsubmit=async event=>{
       event.preventDefault(); const form=event.target, status=form.querySelector('[role=status]'), button=form.querySelector('button'); button.disabled=true;

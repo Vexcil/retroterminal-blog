@@ -24,8 +24,8 @@ tabs_player: true
     <select id="tab-folder" aria-label="Filter by folder">
       <option value="">All folders</option>
     </select>
-    <button type="button" id="tab-upload-button">Upload</button>
     <button type="button" id="tab-songsterr-open">Import Songsterr</button>
+    <button type="button" id="tab-upload-button">Upload</button>
     <input
       type="file"
       id="tab-upload-file"
@@ -60,17 +60,15 @@ tabs_player: true
     <div class="tabs-viewer-shell" id="tabs-viewer-shell">
     <aside id="tab-youtube-panel" class="tabs-youtube-panel" aria-label="YouTube synchronization" hidden>
       <div class="yt-heading"><strong>YouTube sync</strong><button id="yt-close" type="button" aria-label="Close YouTube panel">Close</button></div>
-      <div id="yt-embed"></div>
       <p id="yt-status" role="status">Open a tab to link a recording.</p>
       <p id="yt-storage-status" role="status"></p>
       <button id="yt-retry-save" type="button" hidden>Retry server save</button>
-      <div class="yt-row"><button id="yt-enable" type="button" disabled>Use YouTube</button><button id="yt-synth" type="button" disabled>Use synth</button></div>
       <details open><summary>Find on Songsterr</summary>
         <label>Artist / song<input id="yt-song-search" type="search" maxlength="120"></label>
         <button id="yt-find" type="button">Find recordings</button>
         <div id="yt-song-results" class="yt-results"></div>
         <label>Or paste a Songsterr tab link<input id="yt-song-link" type="text" placeholder="https://www.songsterr.com/…"></label>
-        <div class="yt-row"><button id="yt-import-song" type="button">Get video &amp; timing</button><button id="yt-import-tab" type="button">Import tab</button></div>
+        <div class="yt-row"><button id="yt-import-tab" type="button">Import / open tab</button><button id="yt-import-song" type="button">Get video &amp; timing</button></div>
         <div id="yt-video-results" class="yt-results"></div>
       </details>
       <details><summary>Use your own video / adjust timing</summary>
@@ -204,7 +202,14 @@ tabs_player: true
       <button id="track-sidebar-toggle" type="button" aria-label="Tracks" aria-expanded="false" aria-controls="track-sidebar" aria-keyshortcuts="T" title="Tracks" disabled>Tracks</button>
       <button id="tab-playback-toggle" type="button" aria-expanded="false" aria-controls="tab-playback-panel" aria-keyshortcuts="P">Playback</button>
       <button id="tab-dock-loop" type="button" data-mirror="tab-loop" aria-pressed="false" aria-keyshortcuts="L">Loop</button>
-      <button id="tab-dock-play" type="button" data-mirror="tab-play" aria-keyshortcuts="Space" disabled>Play</button>
+      <div class="tabs-playback-control" data-source="synth" aria-label="Playback and audio source">
+        <button id="tab-dock-play" type="button" data-mirror="tab-play" aria-keyshortcuts="Space" aria-describedby="tab-audio-source-status" disabled>Play</button>
+        <div class="tabs-source-switch" role="group" aria-label="Playback audio source">
+          <button id="yt-synth" type="button" aria-label="Use synth" aria-pressed="true" disabled>Synth</button>
+          <button id="yt-enable" type="button" aria-label="Use YouTube" aria-pressed="false" disabled>YT</button>
+        </div>
+        <span id="tab-audio-source-status" class="tabs-visually-hidden" role="status">Playback source: Synth</span>
+      </div>
       </div>
       <div id="tab-dock-extra" class="tabs-dock-extra" inert></div>
       <button id="tab-dock-expand" class="tabs-dock-expand" type="button" aria-expanded="false" aria-controls="tab-dock-extra" aria-label="Show more player settings" title="Show more player settings">⌃</button>
@@ -215,15 +220,19 @@ tabs_player: true
   <p id="tab-sync-notice-text"></p>
   <div><button id="tab-sync-notice-use" type="button">Use YouTube</button><button id="tab-sync-notice-details" type="button">Details</button></div>
 </aside>
+<aside id="tab-youtube-player" class="tabs-youtube-player" aria-label="YouTube video player" hidden>
+  <div class="yt-mini-heading"><span>YouTube</span><button id="yt-open-settings" type="button">Sync settings</button></div>
+  <div id="yt-embed"></div>
+</aside>
   </section>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261101-auto">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-controls">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
 <script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261101-auto"></script>
-<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261101-auto"></script>
-<script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261101-2"></script>
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-controls"></script>
+<script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261103-users"></script>
 <script>
 (function() {
   const PAGE_SIZE = 50;
@@ -336,7 +345,7 @@ tabs_player: true
     const bar = cursor.getBoundingClientRect();
     const viewport = scoreViewport.getBoundingClientRect();
     if (!bar.width || !bar.height || bar.bottom <= viewport.top || bar.top >= viewport.bottom) return;
-    const covered = [floatingDock, trackSidebar, playbackPanel].some(panel => {
+    const covered = [floatingDock, trackSidebar, playbackPanel, document.getElementById('tab-youtube-player')].some(panel => {
       if (panel.hidden) return false;
       const rect = panel.getBoundingClientRect();
       return rect.width && rect.height && bar.right > rect.left - 12 && bar.left < rect.right + 12 &&

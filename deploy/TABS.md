@@ -48,12 +48,11 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
 - Newer search/filter requests cancel older ones. A failed tab load hides the
   previous score and keeps playback disabled until a new song loads.
 
-Original recording playback is not enabled by these layout changes. alphaTab
-1.6 supports external audio/video synchronization, but a recording needs a
-chosen source and timing points that match the tab. Filename search alone does
-not establish synchronization. A future integration can accept an optional
-YouTube link per song and save its timing alignment without requiring every
-library entry to have a video.
+Original recording playback, private access, and Songsterr importing are
+implemented in the companion player scripts. See [tabs-private.md](tabs-private.md)
+for the current deployment, audio-source switch, timing storage, and duplicate
+import behavior. A recording still needs timing that matches its arrangement;
+filename similarity alone does not establish synchronization.
 
 ## Layout
 

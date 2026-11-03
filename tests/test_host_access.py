@@ -10,6 +10,7 @@ import tempfile
 import threading
 import unittest
 from functools import partial
+import bcrypt
 from http.server import ThreadingHTTPServer
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
@@ -23,6 +24,7 @@ class HostAccessTests(unittest.TestCase):
             settings = dict(username='guest', salt='12' * 16,
                 password_hash=hashlib.pbkdf2_hmac('sha256', b'test-password', bytes.fromhex('12' * 16), 260000).hex(),
                 session_key='34' * 32, origins=['https://retroterminal.net'])
+            settings['users']={'vex':{'algorithm':'bcrypt','password_hash':bcrypt.hashpw(b'vex-password',bcrypt.gensalt(rounds=4)).decode()}}
             config = root / 'access.json'
             config.write_text(json.dumps(settings))
             old = os.environ.get('TABS_ACCESS_CONFIG')
@@ -55,6 +57,13 @@ class HostAccessTests(unittest.TestCase):
                     self.assertIn(flag, cookie)
                 headers = {'Cookie':cookie.split(';')[0]}
                 self.assertEqual(request('GET', '/data/tabs.json', headers=headers)[0], 200)
+                result = request('POST','/api/login',json.dumps({'username':'vex','password':'vex-password'}),{'Content-Type':'application/json'})
+                self.assertEqual(result[0],200)
+                self.assertEqual(request('GET','/data/tabs.json',headers={'Cookie':result[1]['Set-Cookie'].split(';')[0]})[0],200)
+                # Existing guest cookies remain valid after logging in as vex elsewhere.
+                self.assertEqual(request('GET','/data/tabs.json',headers=headers)[0],200)
+                self.assertEqual(request('POST','/api/login',json.dumps({'username':'vex','password':'test-password'}))[0],401)
+                self.assertEqual(request('POST','/api/login',json.dumps({'username':'unknown','password':'test-password'}))[0],401)
                 self.assertEqual(request('POST', '/api/play', '{}', dict(headers, Origin='https://untrusted.example'))[0], 403)
             finally:
                 connection.close()
