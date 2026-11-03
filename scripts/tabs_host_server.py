@@ -5,6 +5,7 @@ from songsterr_bridge import songsterr_response
 from tabs_access import authorized, login, serve_private_viewer, config as access_config
 from youtube_sync_store import get_sync, save_sync
 from songsterr_import_store import find_import, remember_import
+from tab_catalog import identity as catalog_identity, matches as catalog_matches
 import cgi
 import json
 import mimetypes
@@ -72,6 +73,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
     index_lock = threading.Lock()
     index_cache = None
     index_cache_mtime = None
+    index_cache_path = None
     play_counts_lock = threading.Lock()
     play_counts_cache = None
     play_counts_mtime = None
@@ -300,6 +302,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             maximum=MAX_PAGE_SIZE,
         )
         search = (params.get("search", [""])[0] or "").strip().lower()
+        search_field = 'artist' if params.get('search_field', [''])[0] == 'artist' else 'all'
+        artist_exact = params.get('artist_exact', [''])[0] == '1'
         sort = (params.get("sort", [DEFAULT_SORT])[0] or DEFAULT_SORT).strip()
         if sort not in VALID_SORTS:
             sort = DEFAULT_SORT
@@ -307,7 +311,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
         entries = self.get_enriched_entries()
         if search:
-            entries = [item for item in entries if search in item["title"].lower()]
+            entries = [item for item in entries if catalog_matches(item, search, search_field, artist_exact)]
         if folder:
             entries = [item for item in entries if item.get("folder") == folder]
 
@@ -331,6 +335,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 "has_more": page < max_page,
                 "sort": sort,
                 "search": search,
+                "search_field": search_field,
                 "folder": folder,
                 "folders": folders,
             },
@@ -354,15 +359,18 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return []
 
         current_mtime = output_path.stat().st_mtime_ns
+        cache = type(self)
         with self.index_lock:
-            if self.index_cache is not None and self.index_cache_mtime == current_mtime:
-                return self.index_cache
+            if cache.index_cache is not None and cache.index_cache_mtime == current_mtime and cache.index_cache_path == output_path:
+                return cache.index_cache
 
             with output_path.open("r", encoding="utf-8") as handle:
                 loaded = json.load(handle)
 
-            self.index_cache = loaded
-            self.index_cache_mtime = current_mtime
+            loaded = [dict(item, **catalog_identity(item)) for item in loaded]
+            cache.index_cache = loaded
+            cache.index_cache_mtime = current_mtime
+            cache.index_cache_path = output_path
             return loaded
 
     def get_play_counts(self):
@@ -635,8 +643,10 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             json.dump(entries, handle, ensure_ascii=False, indent=2)
         temporary_path.replace(output_path)
         with self.index_lock:
-            self.index_cache = entries
-            self.index_cache_mtime = output_path.stat().st_mtime_ns
+            cache = type(self)
+            cache.index_cache = [dict(item, **catalog_identity(item)) for item in entries]
+            cache.index_cache_mtime = output_path.stat().st_mtime_ns
+            cache.index_cache_path = output_path
 
     def make_public_file_url(self, destination: Path) -> str:
         rel_path = destination.relative_to(self.files_dir).as_posix()

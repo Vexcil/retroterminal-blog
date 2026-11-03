@@ -28,6 +28,18 @@
     if(!useful(artist) || !useful(title) || normalize(artist).length<2 || normalize(title).length<2) return null;
     return {artist,title,query:(artist+' '+title).slice(0,120)};
   }
+  function catalogIdentity(item) {
+    const split=String(item.title || '').split(/\s+[-–—]\s+/);
+    const artist=item.artist || (split.length>1 && !/^\d+$/.test(normalize(split[0])) ? split[0].trim() : '');
+    return {artist,song_title:item.song_title || (split.length>1 ? split.slice(1).join(' — ') : item.title || '')};
+  }
+  function catalogMatches(item, query, field='all') {
+    const wanted=normalize(query), {artist}=catalogIdentity(item);
+    const designations=[artist,...String(item.folder_path || '').replace(/\\/g,'/').split('/')];
+    const artistMatch=designations.some(value=>normalize(value).includes(wanted)) ||
+      [...String(item.title || '').matchAll(/[-–—]/g)].some(match=>normalize(item.title.slice(0,match.index))===wanted);
+    return field==='artist' ? artistMatch : normalize(item.title).includes(wanted) || artistMatch;
+  }
   function matchingSongs(wanted, songs) {
     if(!wanted) return [];
     const seen=new Set();
@@ -79,7 +91,7 @@
     const {source,videos}=compatible[0], video=preferredVideo(videos);
     return video?{kind:'match',source,video}:{kind:'choices',songs:[source]};
   }
-  const core={normalize,identity,matchingSongs,compatibleVideos,preferredVideo,discover};
+  const core={normalize,identity,catalogIdentity,catalogMatches,matchingSongs,compatibleVideos,preferredVideo,discover};
   if(typeof module!=='undefined' && module.exports) module.exports=core;
   root.RetroTabDiscovery=core;
 })(typeof window!=='undefined'?window:globalThis);

@@ -61,6 +61,7 @@
     let player, playerPromise, timer, enabled = false, saved = null, original = [], generation = 0, pendingSeek = null;
     let searchController, sourceController, nextSongsterrId, knownSongsterrId, storage, cuedVideoId, edits=0;
     let catalogController, importing = false;
+    let catalogSource='songsterr', catalogArtist=null, catalogPage=1, catalogQuery='';
     let autoController,autoIdle,autoTimer,autoAttempted=false,noticeChoices=null;
     const attached = new WeakSet();
     const api = () => context.getApi(), score = () => context.getScore();
@@ -385,28 +386,79 @@
       event?.preventDefault();
       try { await fn(); } catch(error) { if(error.name!=='AbortError') catalogMessage(error.message,true); }
     };
-    $('songsterr-search-form').onsubmit = catalogRun(async () => {
-      const query=$('songsterr-query').value.trim();
+    function updateCatalog() {
+      const local=catalogSource==='library';
+      songsterrPanel.querySelector('.yt-heading strong').textContent=local?'Search my library':'Search Songsterr';
+      $('songsterr-source').setAttribute('aria-pressed',String(!local));
+      $('library-source').setAttribute('aria-pressed',String(local));
+      $('songsterr-direct-import').hidden=local;
+      $('songsterr-artist-filter').hidden=!catalogArtist;
+      $('songsterr-artist-name').textContent=catalogArtist?.name || '';
+      songsterrResults.setAttribute('aria-label',local?'My library results':'Songsterr results');
+    }
+    function bindArtist(element, artist, artistId) {
+      element.classList.add('tabs-artist-link');
+      element.setAttribute('aria-label','Search '+artist+' tabs on Songsterr');
+      element.setAttribute('title','Search '+artist+' tabs on Songsterr');
+      element.onclick=catalogRun(async()=>{
+        catalogArtist={name:artist,id:artistId}; catalogSource='songsterr';
+        $('songsterr-query').value=artist; updateCatalog(); openCatalog(true);
+        await searchCatalog(1);
+      });
+      if(element.tagName.toLowerCase()==='text') {
+        element.setAttribute('role','button'); element.setAttribute('tabindex','0');
+        element.onkeydown=event=>{if(['Enter',' '].includes(event.key)) {event.preventDefault();event.stopPropagation();element.onclick();}};
+      }
+      return element;
+    }
+    function artistButton(artist, artistId) {
+      const button=document.createElement('button'); button.type='button'; button.textContent=artist;
+      return bindArtist(button,artist,artistId);
+    }
+    async function searchCatalog(page=1, query=$('songsterr-query').value.trim()) {
       if(query.length<2) throw new Error('Enter a song title or artist.');
+      if(catalogArtist && query!==catalogArtist.name) catalogArtist=null;
+      catalogPage=page; catalogQuery=query; updateCatalog();
+      const local=catalogSource==='library', artist=catalogArtist;
       catalogController?.abort(); const controller=catalogController=new AbortController();
       songsterrResults.replaceChildren(); songsterrResults.setAttribute('aria-busy','true');
-      catalogMessage('Searching Songsterr…');
+      $('songsterr-pagination').hidden=true;
+      catalogMessage(local?'Searching your library…':'Searching Songsterr…');
       try {
-        const data=await getJson('/api/songsterr/search?q='+encodeURIComponent(query),controller);
+        const params=new URLSearchParams(local?{search:query,page,page_size:20,sort:'title-asc',search_field:artist?'artist':'all',artist_exact:artist?'1':'0'}:{q:query,page});
+        if(!local && artist) { params.set('artist',artist.name); if(artist.id) params.set('artist_id',artist.id); }
+        const data=await getJson((local?'/api/tabs?':'/api/songsterr/search?')+params,controller);
         if(controller.signal.aborted) return;
+        if(!local && artist && data.artist_id) catalogArtist.id=data.artist_id;
         data.items.forEach(song => {
-          const row=document.createElement('div'), title=document.createElement('span'), button=document.createElement('button');
-          row.className='songsterr-result'; title.textContent=song.artist+' — '+song.title;
-          button.type='button'; button.textContent='Import / open';
-          button.setAttribute('aria-label','Import or open '+song.artist+' — '+song.title);
-          button.onclick=catalogRun(()=>importSong(String(song.id),button,catalogMessage));
+          const row=document.createElement('div'), title=document.createElement('div'), name=document.createElement('span'), button=document.createElement('button');
+          const labels=local?RetroTabDiscovery.catalogIdentity(song):{artist:song.artist,song_title:song.title};
+          row.className='songsterr-result'; title.className='catalog-song';
+          if(labels.artist) title.append(artistButton(labels.artist,song.artist_id));
+          name.textContent=labels.song_title; title.append(name);
+          button.type='button'; button.textContent=local?'Open tab':'Import / open';
+          button.setAttribute('aria-label',(local?'Open ':'Import or open ')+(labels.artist?labels.artist+' — ':'')+labels.song_title);
+          button.onclick=catalogRun(()=>local?context.openTab(song):importSong(String(song.id),button,catalogMessage));
           row.append(title,button); songsterrResults.append(row);
         });
-        catalogMessage(data.items.length ? 'Choose an arrangement to open. Tabs already in your library are reused.' : 'No tabs found. Try fewer words or paste a Songsterr link below.');
+        $('songsterr-pagination').hidden=!data.items.length;
+        $('songsterr-prev').disabled=page<=1; $('songsterr-next').disabled=!data.has_more;
+        $('songsterr-page').textContent='Page '+page;
+        catalogMessage(data.items.length ? (local?data.total+' tabs in your library. Choose one to open.':'Choose an arrangement to open. Tabs already in your library are reused.') : 'No tabs found'+(local?' in your library. Try Songsterr or another artist.':'. Try another search or paste a Songsterr link below.'));
       } catch(error) {
-        if(catalogController===controller) throw error.name==='AbortError' ? new Error('Songsterr search timed out. Try again.') : error;
+        if(catalogController===controller) throw error.name==='AbortError' ? new Error('Search timed out. Try again.') : error;
       } finally { if(catalogController===controller) songsterrResults.setAttribute('aria-busy','false'); }
+    }
+    $('songsterr-search-form').onsubmit = catalogRun(()=>searchCatalog(1));
+    $('songsterr-query').oninput=()=>{if(catalogArtist && $('songsterr-query').value.trim()!==catalogArtist.name) {catalogArtist=null;updateCatalog();}};
+    for(const source of ['songsterr','library']) $(source+'-source').onclick=catalogRun(async()=>{
+      catalogSource=source; updateCatalog();
+      if($('songsterr-query').value.trim().length>=2) await searchCatalog(1);
+      else { songsterrResults.replaceChildren(); $('songsterr-pagination').hidden=true; }
     });
+    $('songsterr-artist-clear').onclick=catalogRun(()=>{catalogArtist=null;updateCatalog();return searchCatalog(1);});
+    $('songsterr-prev').onclick=catalogRun(()=>searchCatalog(Math.max(1,catalogPage-1),catalogQuery));
+    $('songsterr-next').onclick=catalogRun(()=>searchCatalog(catalogPage+1,catalogQuery));
     function songsterrId(text) {
       text=text.trim();
       const match=text.match(/(?:-s|\/)(\d+)(?:[/?#]|$)/);
@@ -427,7 +479,11 @@
     });
     function renderSongs(items) {
       const list=$('yt-song-results'); list.replaceChildren();
-      items.forEach(song=>{const button=document.createElement('button');button.type='button';button.textContent=song.artist+' — '+song.title;button.onclick=run(()=>loadSong(song.id));list.append(button);});
+      items.forEach(song=>{
+        const row=document.createElement('div'), button=document.createElement('button'); row.className='yt-song-result';
+        if(song.artist) row.append(artistButton(song.artist,song.artist_id));
+        button.type='button';button.textContent=song.title;button.onclick=run(()=>loadSong(song.id));row.append(button);list.append(row);
+      });
     }
     async function loadSong(id) {
       stopDiscovery(true);
@@ -486,6 +542,7 @@
       url.value='https://www.youtube.com/watch?v='+value.videoId; await cue(); if(stamp!==generation) return; saved=value; persist(); draw(); message('Timing imported. Choose Use YouTube to enable it.');
     });
     return {
+      artistButton, bindArtist,
       beforeLoad() { stopDiscovery(); autoAttempted=false; notice.hidden=true; noticeChoices=null; knownSongsterrId=nextSongsterrId; nextSongsterrId=null; storage?.flush().catch(()=>{}); storage=null; generation++; searchController?.abort(); sourceController?.abort(); useSynth(); player?.pauseVideo?.(); pendingSeek=null; saved=null; original=[]; storageStatus.textContent=''; retrySave.hidden=true; open(false); openCatalog(false); },
       scoreLoaded(value, item) {
         original=value.exportFlatSyncPoints();

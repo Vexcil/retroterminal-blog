@@ -6,6 +6,7 @@ import threading
 import time
 from urllib.parse import quote
 from urllib.request import Request, urlopen
+from tab_catalog import normalize
 
 _cache = {}
 _lock = threading.Lock()
@@ -35,11 +36,29 @@ def songsterr_response(route, query):
         term = query.get('q', [''])[0].strip()
         if not 2 <= len(term) <= 120:
             raise ValueError('Enter between 2 and 120 search characters.')
-        songs = fetch('/api/songs?pattern=' + quote(term))
+        page = query.get('page', ['1'])[0]
+        if not page.isdecimal() or not 1 <= int(page) <= 50:
+            raise ValueError('Invalid search page.')
+        offset = (int(page) - 1) * 20
+        artist = query.get('artist', [''])[0].strip()
+        artist_id = query.get('artist_id', [''])[0]
+        if artist_id and not re.fullmatch(r'[1-9][0-9]{0,9}', artist_id):
+            raise ValueError('Invalid Songsterr artist ID.')
+        if artist and not artist_id:
+            candidates = fetch('/api/search?pattern=' + quote(artist) + '&size=50&from=0&more=true')
+            exact = [s for s in candidates.get('records', []) if normalize(s.get('artist')) == normalize(artist)]
+            artist_id = str(exact[0].get('artistId') or '') if exact else ''
+            if not artist_id:
+                return {'items': [], 'has_more': False, 'page': int(page)}
+        path = '/api/artist/' + artist_id + '/search' if artist_id else '/api/search'
+        pattern = '' if artist else term
+        result = fetch(path + '?pattern=' + quote(pattern) + '&size=20&from=' + str(offset) + '&more=true')
+        songs = result.get('records') if isinstance(result, dict) else None
         if not isinstance(songs, list):
             raise ValueError('Songsterr returned an unexpected search response.')
-        return {'items': [{'id': s['songId'], 'artist': str(s.get('artist', ''))[:200], 'title': str(s.get('title', ''))[:200]}
-                          for s in songs[:10] if isinstance(s, dict) and isinstance(s.get('songId'), int)]}
+        return {'items': [{'id': s['songId'], 'artist_id': s.get('artistId'), 'artist': str(s.get('artist', ''))[:200], 'title': str(s.get('title', ''))[:200]}
+                          for s in songs[:20] if isinstance(s, dict) and isinstance(s.get('songId'), int)],
+                'has_more': len(songs) == 20 and int(page) < 50, 'page': int(page), 'artist_id': int(artist_id) if artist_id else None}
     song_id = query.get('id', [''])[0]
     if not re.fullmatch(r'[1-9][0-9]{0,9}', song_id):
         raise ValueError('Invalid Songsterr song ID.')

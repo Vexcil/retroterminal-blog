@@ -14,7 +14,10 @@ tabs_player: true
   </div>
   <section id="tabs-library" aria-label="Tab library">
   <div class="tabs-controls">
-    <input type="text" id="tab-search" aria-label="Search by title" placeholder="Search by title..." />
+    <div class="tabs-library-search">
+      <select id="tab-search-field" aria-label="Library search mode"><option value="all">All</option><option value="artist">Artist</option></select>
+      <input type="text" id="tab-search" aria-label="Search library" placeholder="Search titles / artists…" />
+    </div>
     <select id="tab-sort" aria-label="Sort tabs">
       <option value="recent" selected>Most Recent</option>
       <option value="played">Most Played</option>
@@ -61,13 +64,18 @@ tabs_player: true
     <div class="tabs-viewer-shell" id="tabs-viewer-shell">
     <aside id="tab-songsterr-panel" class="tabs-songsterr-panel" aria-label="Songsterr tab search" hidden>
       <div class="yt-heading"><strong>Search Songsterr</strong><button id="songsterr-close" type="button" aria-label="Close Songsterr panel">Close</button></div>
+      <div class="tabs-search-sources" role="group" aria-label="Tab search source">
+        <button id="songsterr-source" type="button" aria-pressed="true">Songsterr</button><button id="library-source" type="button" aria-pressed="false">My library</button>
+      </div>
       <form id="songsterr-search-form" class="songsterr-search-form">
         <label for="songsterr-query">Artist / song<input id="songsterr-query" type="search" maxlength="120" placeholder="Search for tabs…" required minlength="2"></label>
         <button id="songsterr-search" type="submit">Search</button>
       </form>
+      <div id="songsterr-artist-filter" class="songsterr-artist-filter" hidden><span>Artist: <strong id="songsterr-artist-name"></strong></span><button id="songsterr-artist-clear" type="button">All artists</button></div>
       <p id="songsterr-status" role="status">Search for a song, then import an arrangement. Existing tabs open without adding a duplicate.</p>
       <div id="songsterr-results" class="songsterr-results" aria-label="Songsterr results" aria-busy="false"></div>
-      <details><summary>Have a Songsterr link?</summary>
+      <div id="songsterr-pagination" class="songsterr-pagination" hidden><button id="songsterr-prev" type="button">Prev</button><span id="songsterr-page"></span><button id="songsterr-next" type="button">Next</button></div>
+      <details id="songsterr-direct-import"><summary>Have a Songsterr link?</summary>
         <form id="songsterr-link-form">
           <label for="songsterr-link">Tab URL or song ID<input id="songsterr-link" type="text" placeholder="https://www.songsterr.com/…" required></label>
           <button id="songsterr-link-import" type="submit">Import / open tab</button>
@@ -244,10 +252,10 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-songsterr-search">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261103-artist-search">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
-<script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261101-auto"></script>
-<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-songsterr-search"></script>
+<script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261103-artist-search"></script>
+<script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-artist-search"></script>
 <script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261103-users"></script>
 <script>
 (function() {
@@ -267,6 +275,7 @@ tabs_player: true
   let indexRequestController = null;
 
   const searchInput        = document.getElementById('tab-search');
+  const searchField        = document.getElementById('tab-search-field');
   const sortSelect         = document.getElementById('tab-sort');
   const folderSelect       = document.getElementById('tab-folder');
   const listEl             = document.getElementById('tab-list');
@@ -339,7 +348,7 @@ tabs_player: true
 
   const youtubeSync = RetroTabSync.create({getApi: () => alphaApi, getScore: () => currentScore,
     getItem: () => currentTabItem, getApiBase: () => fileBaseUrl || location.origin,
-    importTab: item => loadTab(normalizeTabItem(item))});
+    importTab: item => loadTab(normalizeTabItem(item)), openTab: item => loadTab(normalizeTabItem(item))});
 
   function updateScoreScrollRoom() {
     // Leave enough room after the final system for it to reach the top too.
@@ -418,6 +427,7 @@ tabs_player: true
 
   function normalizeTabItem(item) {
     return {
+      ...RetroTabDiscovery.catalogIdentity(item || {}),
       title: item && item.title ? item.title : "Untitled tab",
       file: resolveTabFileUrl(item && item.file ? item.file : ""),
       folder: item && item.folder ? item.folder : "Root",
@@ -447,6 +457,7 @@ tabs_player: true
     url.searchParams.set("page_size", String(PAGE_SIZE));
     url.searchParams.set("sort", sortSelect.value || "title-asc");
     url.searchParams.set("search", searchInput.value || "");
+    url.searchParams.set("search_field", searchField.value);
     url.searchParams.set("folder", folderSelect.value || "");
     return url.toString();
   }
@@ -480,7 +491,9 @@ tabs_player: true
 
   function updateSongInfo(score) {
     songTitleEl.textContent = (score && score.title) || (currentTabItem && currentTabItem.title) || "Untitled tab";
-    songArtistEl.textContent = (score && score.artist) || "";
+    const artist = RetroTabDiscovery.identity(score || {}, currentTabItem || {})?.artist || currentTabItem?.artist || '';
+    songArtistEl.replaceChildren();
+    if (artist) songArtistEl.append(youtubeSync.artistButton(artist));
     songTitleEl.title = currentTabItem ? currentTabItem.title : "";
   }
 
@@ -657,7 +670,7 @@ tabs_player: true
     const folder = folderSelect ? (folderSelect.value || "") : "";
 
     filteredTabs = allTabs.filter(item =>
-      item.title.toLowerCase().includes(q) &&
+      RetroTabDiscovery.catalogMatches(item, q, searchField.value) &&
       (!folder || item.folder === folder)
     );
 
@@ -715,7 +728,8 @@ tabs_player: true
 
       const titleSpan = document.createElement("span");
       titleSpan.className = "tab-title";
-      titleSpan.textContent = item.title;
+      if (item.artist) titleSpan.append(youtubeSync.artistButton(item.artist), document.createTextNode(' — ' + item.song_title));
+      else titleSpan.textContent = item.title;
       titleSpan.title = item.folder_path || item.folder || item.title;
 
       const btn = document.createElement("button");
@@ -1194,6 +1208,19 @@ tabs_player: true
     scheduleMeasureClearance();
   });
   scoreResizeObserver.observe(scoreViewport);
+  // Lazy score sections arrive after renderFinished; link artist text when mounted.
+  const scoreArtistObserver = new MutationObserver(changes => {
+    const artist = songArtistEl.textContent.trim();
+    if (!artist) return;
+    changes.forEach(change => change.addedNodes.forEach(node => {
+      if (!(node instanceof Element)) return;
+      const texts = node.matches('text') ? [node] : node.querySelectorAll('svg text, text');
+      texts.forEach(text => {
+        if (text.textContent.trim() === artist && !text.classList.contains('tabs-artist-link')) youtubeSync.bindArtist(text, artist);
+      });
+    }));
+  });
+  scoreArtistObserver.observe(viewerContainer, {childList:true, subtree:true});
   function setPlaybackOpen(open) {
     playbackPanel.hidden = !open;
     playbackToggle.setAttribute('aria-expanded', String(open));
@@ -1324,6 +1351,7 @@ tabs_player: true
     controlObserver.disconnect();
     dockResizeObserver.disconnect();
     scoreResizeObserver.disconnect();
+    scoreArtistObserver.disconnect();
     if (clearanceFrame !== null) cancelAnimationFrame(clearanceFrame);
     clearTrackActivity();
     if (alphaApi) {
@@ -1518,6 +1546,12 @@ tabs_player: true
       }, 200);
       return;
     }
+    applyFiltersAndRender();
+  });
+  searchField.addEventListener('change', function() {
+    clearTimeout(searchDebounce);
+    searchInput.placeholder = searchField.value === 'artist' ? 'Search artists in your library…' : 'Search titles / artists…';
+    currentPage = 1;
     applyFiltersAndRender();
   });
 

@@ -87,8 +87,8 @@ test('Songsterr search works before a tab is loaded and opens duplicate-safe imp
    failSearch=false;
    await $('songsterr-search-form').onsubmit(new w.Event('submit'));
    assert.equal($('songsterr-results').getAttribute('aria-busy'),'false');
-   assert.match($('songsterr-results').textContent,/Death — Scavenger Of Human Sorrow/);
-   await $('songsterr-results').querySelector('button').onclick();
+   assert.match($('songsterr-results').textContent,/Scavenger Of Human Sorrow/);
+   await $('songsterr-results').querySelector('button[aria-label^="Import or open"]').onclick();
    assert.equal(imported.alreadyExists,true);
    assert.equal(requests.at(-1).options.method,'POST');
    assert.equal(requests.at(-1).options.credentials,'include');
@@ -104,4 +104,46 @@ test('Songsterr search works before a tab is loaded and opens duplicate-safe imp
    assert.equal($('tab-songsterr-panel').hidden,true);
    assert.equal($('tab-youtube-panel').hidden,false);
  } finally { sync.beforeLoad();dom.window.close(); }
+});
+
+test('artist links scope Songsterr searches and carry the same artist to library search and pagination',async()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'tabs.md'),'utf8'),{url:'https://retroterminal.net/tabs/',runScripts:'outside-only'});
+ const w=dom.window,$=id=>w.document.getElementById(id);w.HTMLElement.prototype.scrollIntoView=function(){};
+ const requests=[];let opened;
+ w.fetch=async(url)=>{
+   requests.push(new URL(url,w.location.origin));
+   return {ok:true,json:async()=>url.startsWith('/api/tabs')
+     ? {items:[{file:'/files/death.gp',title:'Death - Symbolic',artist:'Death',song_title:'Symbolic'}],total:30,has_more:true}
+     : {items:[{id:6352,artist_id:1851,artist:'Death',title:'Symbolic'}],artist_id:1851,has_more:true}};
+ };
+ w.eval(fs.readFileSync(path.join(root,'assets/tab-songsterr-discovery.js'),'utf8'));
+ w.eval(fs.readFileSync(path.join(root,'assets/tab-youtube-sync.js'),'utf8'));
+ const sync=w.RetroTabSync.create({getApi:()=>null,getScore:()=>null,getItem:()=>null,getApiBase:()=>'',openTab:async item=>{opened=item;}});
+ try {
+   const artist=sync.artistButton('Death');$('tab-song-artist').append(artist);await artist.onclick();
+   assert.equal($('tab-songsterr-panel').hidden,false);
+   assert.equal($('songsterr-artist-name').textContent,'Death');
+   assert.equal(requests.at(-1).searchParams.get('artist'),'Death');
+   assert.equal(requests.at(-1).searchParams.get('q'),'Death');
+   await $('songsterr-results').querySelector('.tabs-artist-link').onclick();
+   assert.equal(requests.at(-1).searchParams.get('artist_id'),'1851');
+   await $('library-source').onclick();
+   assert.equal(requests.at(-1).pathname,'/api/tabs');
+   assert.equal(requests.at(-1).searchParams.get('search'),'Death');
+   assert.equal(requests.at(-1).searchParams.get('search_field'),'artist');
+   assert.equal(requests.at(-1).searchParams.get('artist_exact'),'1');
+   assert.equal($('library-source').getAttribute('aria-pressed'),'true');
+   await $('songsterr-next').onclick();
+   assert.equal(requests.at(-1).searchParams.get('page'),'2');
+   assert.equal(requests.at(-1).searchParams.get('artist_exact'),'1');
+   await $('songsterr-results').querySelector('button[aria-label^="Open "]').onclick();
+   assert.equal(opened.file,'/files/death.gp');
+   assert.equal(requests.some(r=>r.pathname.endsWith('/import')),false);
+   await $('songsterr-source').onclick();
+   assert.equal(requests.at(-1).searchParams.get('artist_id'),'1851');
+   $('songsterr-query').value='Crystal Mountain';$('songsterr-query').dispatchEvent(new w.Event('input'));
+   await $('songsterr-search-form').onsubmit(new w.Event('submit'));
+   assert.equal(requests.at(-1).searchParams.has('artist'),false);
+   assert.equal($('songsterr-artist-filter').hidden,true);
+ } finally {sync.beforeLoad();w.close();}
 });

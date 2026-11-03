@@ -10,6 +10,13 @@ The `/tabs/` page uses `assets/tab-viewer.css`, loaded only when the page has
 - Opening a tab enters Focus view and gives the score the available viewport.
 - **Library** returns to search without unloading the current song; **Back to tab**
   reopens it. **Page view** exits focus, and **Escape** also returns to the page.
+- Artist names in the heading, score, library, and Songsterr results open an
+  artist-only Songsterr search. **Songsterr / My library** switches the source
+  while preserving that artist; results have independent pagination.
+- The main library search has **All / Artist** modes. Artist matching uses
+  existing artist fields, explicit filename prefixes, and folder designations;
+  it does not rename files or guess missing metadata. Songsterr artist searches
+  resolve an exact artist ID and use its artist search endpoint.
 - The Focus/Page view choice is remembered in this browser. Resizing does not
   change the chosen mode. Score rows reflow automatically; the existing Zoom,
   Layout, Staves, playback, and download controls stay visible.
