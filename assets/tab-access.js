@@ -7,22 +7,33 @@ window.RetroTabAccess = {async start(base) {
     if(!response.ok) throw new Error('Unable to check access. Please reload.');
     return (await response.json()).authenticated;
   }
-  try { if(await check()) return base; } catch(_) { /* Show a retryable sign-in form. */ }
+  let gate=document.querySelector('.tabs-access-gate');
+  if(!gate) {
+    gate=document.createElement('div'); gate.className='tabs-access-gate'; gate.setAttribute('role','dialog'); gate.setAttribute('aria-modal','true'); gate.setAttribute('aria-label','Tabs sign-in');
+    gate.innerHTML='<form><h1>Tabs</h1><label for="tabs-username">Username</label><input id="tabs-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required><label for="tabs-password">Password</label><input id="tabs-password" name="password" type="password" autocomplete="current-password" required><button type="submit">Enter</button><p role="status" aria-live="polite"></p></form>';
+    document.body.append(gate);
+  }
+  const submit=gate.querySelector('button'); submit.disabled=true;
+  function unlock(target) {
+    document.body.classList.add('tabs-authenticated');
+    gate.remove();
+    return target;
+  }
+  try { if(await check()) return unlock(base); } catch(_) { /* Show a retryable sign-in form. */ }
   const tailnet='https://vex-ser.adal-fort.ts.net:11443';
   if(location.hostname==='retroterminal.net') {
-    try { if(await check(tailnet)) return tailnet; } catch(_) { /* Off-tailnet or private-network access blocked. */ }
+    try { if(await check(tailnet)) return unlock(tailnet); } catch(_) { /* Off-tailnet or private-network access blocked. */ }
   }
+  submit.disabled=false;
+  gate.querySelector('input').focus();
   return new Promise(resolve=>{
-    const gate=document.createElement('div'); gate.className='tabs-access-gate'; gate.setAttribute('role','dialog'); gate.setAttribute('aria-modal','true'); gate.setAttribute('aria-label','Tabs sign-in');
-    gate.innerHTML='<form><h1>Tabs</h1><label for="tabs-username">Username</label><input id="tabs-username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required><label for="tabs-password">Password</label><input id="tabs-password" name="password" type="password" autocomplete="current-password" required><button type="submit">Enter</button><p role="status" aria-live="polite"></p></form>';
-    document.body.append(gate); gate.querySelector('input').focus();
     gate.querySelector('form').onsubmit=async event=>{
       event.preventDefault(); const form=event.target, status=form.querySelector('[role=status]'), button=form.querySelector('button'); button.disabled=true;
       try {
         const response=await fetch(base+'/api/login',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:form.username.value,password:form.password.value})});
         if(!response.ok) throw new Error(response.status===429?'Too many attempts. Try again shortly.':'Incorrect username or password.');
         if(!await check()) throw new Error('The session could not be saved. Allow cookies for this site and try again.');
-        form.password.value=''; gate.remove(); resolve(base);
+        form.password.value=''; resolve(unlock(base));
       } catch(error) { status.textContent=error.message; }
       finally { button.disabled=false; }
     };

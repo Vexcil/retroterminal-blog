@@ -252,11 +252,11 @@ tabs_player: true
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@coderline/alphatab@1.6.0/dist/alphaTab.min.js"></script>
-<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261109-login">
+<link rel="stylesheet" href="{{ "/assets/tab-youtube-sync.css" | relative_url }}?v=20261110-login-first">
 <script src="{{ "/assets/tab-sync-storage.js" | relative_url }}?v=20261101-server2"></script>
 <script src="{{ "/assets/tab-songsterr-discovery.js" | relative_url }}?v=20261103-artist-search"></script>
 <script src="{{ "/assets/tab-youtube-sync.js" | relative_url }}?v=20261103-artist-search"></script>
-<script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261109-login"></script>
+<script src="{{ "/assets/tab-access.js" | relative_url }}?v=20261110-login-first"></script>
 <script>
 (function() {
   const PAGE_SIZE = 50;

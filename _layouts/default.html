@@ -8,6 +8,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ "/style.css" | relative_url }}?v=20261020-synth-150">
   {% if page.tabs_player %}
+  {% include tabs-login-style.html %}
   <link rel="stylesheet" href="{{ '/assets/tab-viewer.css' | relative_url }}?v=20261030d">
   {% endif %}
   {% if page.collection == 'recipes' %}
@@ -32,6 +33,7 @@
 </head>
 
 <body class="theme-green{% if page.home %} page-home{% endif %}{% if page.tabs_player %} page-tabs{% endif %}{% if page.lightweight %} page-lightweight{% endif %}">
+  {% if page.tabs_player %}{% include tabs-login.html %}{% endif %}
   <div id="screen" class="crt{% unless page.lightweight %} crt-colorsep{% endunless %}">
     {% include header.html %}
     <main class="main-content">
