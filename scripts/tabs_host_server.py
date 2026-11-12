@@ -2,6 +2,7 @@
 import argparse
 from urllib.error import HTTPError, URLError
 from songsterr_bridge import songsterr_response
+from gametabs_bridge import search as gametabs_search, import_tab as gametabs_import, GameTabsLoginRequired
 from tabs_access import authorized, login, serve_private_viewer, config as access_config
 from youtube_sync_store import get_sync, save_sync
 from songsterr_import_store import find_import, remember_import
@@ -121,6 +122,13 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
         if parsed.path == '/api/youtube-sync':
             return get_sync(self, parse_qs(parsed.query))
+        if parsed.path == '/api/gametabs/search':
+            try:
+                return self.send_json(HTTPStatus.OK, gametabs_search(parse_qs(parsed.query)))
+            except ValueError as error:
+                return self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
+            except (HTTPError, URLError, TimeoutError, OSError, KeyError, TypeError):
+                return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'GameTabs search is unavailable. Try again later.'})
         if parsed.path in ('/api/songsterr/search', '/api/songsterr/sync'):
             try:
                 return self.send_json(HTTPStatus.OK, songsterr_response(parsed.path, parse_qs(parsed.query)))
@@ -169,6 +177,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
         if urlparse(self.path).path == '/api/youtube-sync':
             return save_sync(self)
+        if urlparse(self.path).path == '/api/gametabs/import':
+            return self.import_gametabs()
         if urlparse(self.path).path == '/api/songsterr/import':
             return self.import_songsterr()
         if urlparse(self.path).path != "/upload":
@@ -459,6 +469,25 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             raise ValueError(f"Upload exceeds {MAX_UPLOAD_BYTES // (1024 * 1024)} MB limit.")
 
         return file_item.filename, file_data
+
+    def import_gametabs(self):
+        # Authenticated GameTabs downloading must use its supported login flow.
+        # Until that is configured, the bridge fails closed without writing files.
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 1024:
+                raise ValueError('Invalid import request.')
+            request = json.loads(self.rfile.read(length))
+            if not isinstance(request, dict):
+                raise ValueError('Invalid import request.')
+            gametabs_import(request.get('id', ''))
+            return self.send_json(HTTPStatus.NOT_IMPLEMENTED, {'error': 'GameTabs import is not configured yet.'})
+        except GameTabsLoginRequired as error:
+            return self.send_json(HTTPStatus.CONFLICT, {'error': str(error), 'code': 'gametabs_login_required'})
+        except (ValueError, TypeError) as error:
+            return self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
+        except (HTTPError, URLError, TimeoutError, OSError):
+            return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'GameTabs is unavailable. No tabs were changed.'})
 
     def import_songsterr(self):
         import tempfile

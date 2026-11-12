@@ -25,3 +25,24 @@ Browser storage remains a draft/backup cache. Opening a previously saved tab mig
 Songsterr metadata endpoints are unofficial and may change. The GP generator is vendored under its MIT license in `scripts/songsterr_vendor`. Import is user initiated and restricted to numeric song IDs; the server fetches fixed upstream endpoints, not arbitrary user URLs.
 
 Checks: `npm --prefix tests ci && node --test tests/*.cjs`; install the Dockerfile's Python dependencies, then `python3.12 -m unittest discover -s tests -p 'test_*.py' -v`. The player-controls regression uses a deterministic YouTube adapter and verifies that closing settings retains the connected iframe and active external playback. Build with `docker build -f deploy/tabs.Dockerfile .`.
+
+## GameTabs search (November 12)
+
+The **Search tabs** panel includes Songsterr, GameTabs and My library sources.
+GameTabs uses its public `/tabs?search=...` listing through an authenticated Tabs
+server route; it does not expose library data or credentials to GameTabs. Results
+link to the exact public arrangement. Requests are bounded and limited
+to the GameTabs HTTPS host; user-supplied arbitrary URLs are not fetched.
+
+GameTabs requires login to download Guitar Pro files. Until a legitimate account
+session and supported download flow are configured, results explicitly show
+**Sign-in needed**, and `/api/gametabs/import` fails closed without creating files.
+This is search integration only, not a claim that direct imports work. No
+passwords, session cookies or Google tokens belong in the repository or browser
+assets. Finish authenticated download integration using a connected browser and
+verify a real import before enabling the button.
+
+Songsterr verification on November 12: public search returned Chrono Trigger
+results; the existing conversion code received HTTP 403 at `/api/meta/63252`.
+No alternate endpoint or identity was used to evade that rejection. Existing
+library playback is unaffected; new Songsterr imports cannot be called verified.

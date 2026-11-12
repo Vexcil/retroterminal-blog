@@ -75,7 +75,7 @@ test('Songsterr search works before a tab is loaded and opens duplicate-safe imp
  const sync=w.RetroTabSync.create({getApi:()=>null,getScore:()=>null,getItem:()=>null,getApiBase:()=>'',
    async importTab(item){imported=item;sync.beforeLoad();}});
  try {
-   assert.deepEqual(Array.from(w.document.querySelectorAll('.tabs-view-actions button'),b=>b.textContent),['Library','Songsterr','YouTube','Focus view']);
+   assert.deepEqual(Array.from(w.document.querySelectorAll('.tabs-view-actions button'),b=>b.textContent),['Library','Search tabs','YouTube','Focus view']);
    $('tab-songsterr-toggle').click();
    assert.equal($('tab-songsterr-toggle').getAttribute('aria-expanded'),'true');
    assert.equal(w.document.activeElement,$('songsterr-query'));
@@ -146,4 +146,36 @@ test('artist links scope Songsterr searches and carry the same artist to library
    assert.equal(requests.at(-1).searchParams.has('artist'),false);
    assert.equal($('songsterr-artist-filter').hidden,true);
  } finally {sync.beforeLoad();w.close();}
+});
+
+test('GameTabs source searches separately, explains login requirement and rejects stale source results',async()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'tabs.md'),'utf8'),{url:'https://retroterminal.net/tabs/',runScripts:'outside-only'});
+ const w=dom.window,$=id=>w.document.getElementById(id);
+ w.HTMLElement.prototype.scrollIntoView=function(){};
+ let calls=[],late;
+ w.fetch=async(url,options={})=>{
+   calls.push({url,options});
+   if(url.includes('gametabs')) return {ok:true,json:async()=>({items:[{id:'chrono-trigger/wind-scene',artist:'Chrono Trigger',title:'Wind Scene',url:'https://gametabs.net/chrono-trigger/wind-scene'}],page:1,has_more:false,import_available:false})};
+   return new Promise(resolve=>{late=()=>resolve({ok:true,json:async()=>({items:[{id:3,artist:'Old',title:'Stale result'}]})});});
+ };
+ w.eval(fs.readFileSync(path.join(root,'assets/tab-youtube-sync.js'),'utf8'));
+ const sync=w.RetroTabSync.create({getApi:()=>null,getScore:()=>null,getItem:()=>null,getApiBase:()=>'',importTab(){throw Error('must not import');}});
+ try {
+   $('songsterr-query').value='Chrono Trigger';
+   const pending=$('songsterr-search-form').onsubmit(new w.Event('submit'));
+   await $('gametabs-source').onclick(new w.Event('click'));
+   assert.match(calls[1].url,/\/api\/gametabs\/search\?/);
+   assert.equal($('gametabs-source').getAttribute('aria-pressed'),'true');
+   assert.equal($('songsterr-source').getAttribute('aria-pressed'),'false');
+   assert.equal($('songsterr-direct-import').hidden,true);
+   assert.equal($('songsterr-results').querySelector('button').disabled,true);
+   assert.match($('songsterr-status').textContent,/connected GameTabs account/);
+   assert.equal($('songsterr-results').querySelector('a').href,'https://gametabs.net/chrono-trigger/wind-scene');
+   late();await pending;
+   assert.doesNotMatch($('songsterr-results').textContent,/Stale result/);
+   $('songsterr-query').value='';
+   await $('library-source').onclick(new w.Event('click'));
+   assert.equal($('songsterr-results').children.length,0);
+   assert.equal($('songsterr-results').getAttribute('aria-busy'),'false');
+ } finally {sync.beforeLoad();dom.window.close();}
 });

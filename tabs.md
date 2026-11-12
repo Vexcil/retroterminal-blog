@@ -27,7 +27,7 @@ tabs_player: true
     <select id="tab-folder" aria-label="Filter by folder">
       <option value="">All folders</option>
     </select>
-    <button type="button" id="tab-songsterr-open">Import Songsterr</button>
+    <button type="button" id="tab-songsterr-open">Find / import tabs</button>
     <button type="button" id="tab-upload-button">Upload</button>
     <input
       type="file"
@@ -56,16 +56,16 @@ tabs_player: true
       </div>
       <div class="tabs-view-actions">
         <button type="button" id="tabs-library-button">Library</button>
-        <button type="button" id="tab-songsterr-toggle" aria-expanded="false" aria-controls="tab-songsterr-panel">Songsterr</button>
+        <button type="button" id="tab-songsterr-toggle" aria-expanded="false" aria-controls="tab-songsterr-panel">Search tabs</button>
         <button type="button" id="tab-youtube-toggle" aria-expanded="false" aria-controls="tab-youtube-panel">YouTube</button>
         <button type="button" id="tabs-expand-toggle" aria-pressed="false">Focus view</button>
       </div>
     </div>
     <div class="tabs-viewer-shell" id="tabs-viewer-shell">
-    <aside id="tab-songsterr-panel" class="tabs-songsterr-panel" aria-label="Songsterr tab search" hidden>
-      <div class="yt-heading"><strong>Search Songsterr</strong><button id="songsterr-close" type="button" aria-label="Close Songsterr panel">Close</button></div>
+    <aside id="tab-songsterr-panel" class="tabs-songsterr-panel" aria-label="Tab search" hidden>
+      <div class="yt-heading"><strong>Search Songsterr</strong><button id="songsterr-close" type="button" aria-label="Close tab search">Close</button></div>
       <div class="tabs-search-sources" role="group" aria-label="Tab search source">
-        <button id="songsterr-source" type="button" aria-pressed="true">Songsterr</button><button id="library-source" type="button" aria-pressed="false">My library</button>
+        <button id="songsterr-source" type="button" aria-pressed="true">Songsterr</button><button id="gametabs-source" type="button" aria-pressed="false">GameTabs</button><button id="library-source" type="button" aria-pressed="false">My library</button>
       </div>
       <form id="songsterr-search-form" class="songsterr-search-form">
         <label for="songsterr-query">Artist / song<input id="songsterr-query" type="search" maxlength="120" placeholder="Search for tabs…" required minlength="2"></label>

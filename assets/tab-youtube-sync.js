@@ -387,14 +387,15 @@
       try { await fn(); } catch(error) { if(error.name!=='AbortError') catalogMessage(error.message,true); }
     };
     function updateCatalog() {
-      const local=catalogSource==='library';
-      songsterrPanel.querySelector('.yt-heading strong').textContent=local?'Search my library':'Search Songsterr';
-      $('songsterr-source').setAttribute('aria-pressed',String(!local));
+      const local=catalogSource==='library', game=catalogSource==='gametabs';
+      songsterrPanel.querySelector('.yt-heading strong').textContent=local?'Search my library':game?'Search GameTabs':'Search Songsterr';
+      $('songsterr-source').setAttribute('aria-pressed',String(catalogSource==='songsterr'));
+      $('gametabs-source').setAttribute('aria-pressed',String(game));
       $('library-source').setAttribute('aria-pressed',String(local));
-      $('songsterr-direct-import').hidden=local;
-      $('songsterr-artist-filter').hidden=!catalogArtist;
+      $('songsterr-direct-import').hidden=local || game;
+      $('songsterr-artist-filter').hidden=!catalogArtist || game;
       $('songsterr-artist-name').textContent=catalogArtist?.name || '';
-      songsterrResults.setAttribute('aria-label',local?'My library results':'Songsterr results');
+      songsterrResults.setAttribute('aria-label',local?'My library results':game?'GameTabs results':'Songsterr results');
     }
     function bindArtist(element, artist, artistId) {
       element.classList.add('tabs-artist-link');
@@ -419,40 +420,44 @@
       if(query.length<2) throw new Error('Enter a song title or artist.');
       if(catalogArtist && query!==catalogArtist.name) catalogArtist=null;
       catalogPage=page; catalogQuery=query; updateCatalog();
-      const local=catalogSource==='library', artist=catalogArtist;
+      const source=catalogSource, local=source==='library', game=source==='gametabs', artist=game?null:catalogArtist;
       catalogController?.abort(); const controller=catalogController=new AbortController();
       songsterrResults.replaceChildren(); songsterrResults.setAttribute('aria-busy','true');
       $('songsterr-pagination').hidden=true;
-      catalogMessage(local?'Searching your library…':'Searching Songsterr…');
+      catalogMessage(local?'Searching your library…':game?'Searching GameTabs…':'Searching Songsterr…');
       try {
         const params=new URLSearchParams(local?{search:query,page,page_size:20,sort:'title-asc',search_field:artist?'artist':'all',artist_exact:artist?'1':'0'}:{q:query,page});
         if(!local && artist) { params.set('artist',artist.name); if(artist.id) params.set('artist_id',artist.id); }
-        const data=await getJson((local?'/api/tabs?':'/api/songsterr/search?')+params,controller);
+        const data=await getJson((local?'/api/tabs?':game?'/api/gametabs/search?':'/api/songsterr/search?')+params,controller);
         if(controller.signal.aborted) return;
         if(!local && artist && data.artist_id) catalogArtist.id=data.artist_id;
         data.items.forEach(song => {
           const row=document.createElement('div'), title=document.createElement('div'), name=document.createElement('span'), button=document.createElement('button');
           const labels=local?RetroTabDiscovery.catalogIdentity(song):{artist:song.artist,song_title:song.title};
           row.className='songsterr-result'; title.className='catalog-song';
-          if(labels.artist) title.append(artistButton(labels.artist,song.artist_id));
+          if(labels.artist) { if(game) { const label=document.createElement('span');label.textContent=labels.artist+' · ';title.append(label); } else title.append(artistButton(labels.artist,song.artist_id)); }
           name.textContent=labels.song_title; title.append(name);
-          button.type='button'; button.textContent=local?'Open tab':'Import / open';
+          button.type='button'; button.textContent=local?'Open tab':game && !data.import_available?'Sign-in needed':'Import / open';
+          if(game && !data.import_available) { button.disabled=true;button.title='Connect a GameTabs account on the tab server to enable direct imports.'; }
           button.setAttribute('aria-label',(local?'Open ':'Import or open ')+(labels.artist?labels.artist+' — ':'')+labels.song_title);
-          button.onclick=catalogRun(()=>local?context.openTab(song):importSong(String(song.id),button,catalogMessage));
-          row.append(title,button); songsterrResults.append(row);
+          button.onclick=catalogRun(()=>local?context.openTab(song):importSong(String(song.id),button,catalogMessage,source));
+          row.append(title,button);
+          if(game && song.url) { const link=document.createElement('a');link.href=song.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='GameTabs page';row.append(link); }
+          songsterrResults.append(row);
         });
         $('songsterr-pagination').hidden=!data.items.length;
         $('songsterr-prev').disabled=page<=1; $('songsterr-next').disabled=!data.has_more;
         $('songsterr-page').textContent='Page '+page;
-        catalogMessage(data.items.length ? (local?data.total+' tabs in your library. Choose one to open.':'Choose an arrangement to open. Tabs already in your library are reused.') : 'No tabs found'+(local?' in your library. Try Songsterr or another artist.':'. Try another search or paste a Songsterr link below.'));
+        catalogMessage(game && data.items.length && !data.import_available ? 'GameTabs results found. Direct import needs a connected GameTabs account; use GameTabs page to view an arrangement.' : data.items.length ? (local?data.total+' tabs in your library. Choose one to open.':'Choose an arrangement to open. Tabs already in your library are reused.') : 'No tabs found'+(local?' in your library. Try Songsterr or another artist.':game?'. Try another game or song title.':'. Try another search or paste a Songsterr link below.'));
       } catch(error) {
         if(catalogController===controller) throw error.name==='AbortError' ? new Error('Search timed out. Try again.') : error;
       } finally { if(catalogController===controller) songsterrResults.setAttribute('aria-busy','false'); }
     }
     $('songsterr-search-form').onsubmit = catalogRun(()=>searchCatalog(1));
     $('songsterr-query').oninput=()=>{if(catalogArtist && $('songsterr-query').value.trim()!==catalogArtist.name) {catalogArtist=null;updateCatalog();}};
-    for(const source of ['songsterr','library']) $(source+'-source').onclick=catalogRun(async()=>{
-      catalogSource=source; updateCatalog();
+    for(const source of ['songsterr','gametabs','library']) $(source+'-source').onclick=catalogRun(async()=>{
+      catalogController?.abort(); catalogController=null; songsterrResults.setAttribute('aria-busy','false');
+      catalogSource=source; if(source==='gametabs') catalogArtist=null; updateCatalog();
       if($('songsterr-query').value.trim().length>=2) await searchCatalog(1);
       else { songsterrResults.replaceChildren(); $('songsterr-pagination').hidden=true; }
     });
@@ -512,14 +517,14 @@
       const id=/^\d+$/.test(text) ? text : match?.[1]; if(!id) throw new Error('Paste a Songsterr tab URL or numeric song ID.');
       return loadSong(id);
     });
-    async function importSong(id, button, report=message) {
+    async function importSong(id, button, report=message, source='songsterr') {
       if(importing) return;
       stopDiscovery(true);
-      importing=true; button.disabled=true; report('Opening the Songsterr arrangement in your library…');
+      importing=true; button.disabled=true; report('Opening the '+(source==='gametabs'?'GameTabs':'Songsterr')+' arrangement in your library…');
       try {
-        const response=await fetch(apiBase()+'/api/songsterr/import',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+        const response=await fetch(apiBase()+'/api/'+source+'/import',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
         const data=await response.json(); if(!response.ok) throw new Error(data.error||'Import failed.');
-        nextSongsterrId=id;
+        nextSongsterrId=source==='songsterr'?id:null;
         await context.importTab(data);
         report(data.alreadyExists ? 'Already in your library. Opened the existing tab without importing a duplicate.' : 'Tab imported. A synced recording will be checked in the background.');
       } finally { importing=false; button.disabled=false; }
