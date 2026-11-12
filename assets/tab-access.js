@@ -5,7 +5,9 @@ window.RetroTabAccess = {async start(base) {
     try { response=await fetch(target+'/api/session',{credentials:'include',cache:'no-store',signal:controller.signal}); }
     finally { clearTimeout(timer); }
     if(!response.ok) throw new Error('Unable to check access. Please reload.');
-    return (await response.json()).authenticated;
+    const session=await response.json();
+    // Personal collections require a signed account, not just trusted-network access.
+    return session.authenticated === true && typeof session.username === 'string' && session.username.length > 0;
   }
   let gate=document.querySelector('.tabs-access-gate');
   if(!gate) {

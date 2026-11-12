@@ -69,19 +69,25 @@ def password_matches(password, account):
     return hmac.compare_digest(digest, account['password_hash'])
 
 
-def authorized(handler):
+def principal(handler):
+    """Only a verified signed account session identifies personal state."""
     settings = config()
     if not settings:
-        return False
-    if trusted_network(handler, settings):
-        return True
+        return None
     try:
         cookies = SimpleCookie(handler.headers.get('Cookie', ''))
         body, digest = cookies['rt_tabs_session'].value.rsplit('.', 1)
         username, expiry = base64.urlsafe_b64decode(body + '=' * (-len(body) % 4)).decode().split('|')
-        return username in accounts(settings) and time.time() < int(expiry) and hmac.compare_digest(signature(body, settings), digest)
-    except (ValueError, KeyError, TypeError, CookieError):
-        return False
+        if username in accounts(settings) and time.time() < int(expiry) and hmac.compare_digest(signature(body, settings), digest):
+            return username
+    except (ValueError, KeyError, TypeError, CookieError, UnicodeError):
+        pass
+    return None
+
+
+def authorized(handler):
+    settings = config()
+    return bool(settings and (principal(handler) is not None or trusted_network(handler, settings)))
 
 
 def login(handler):

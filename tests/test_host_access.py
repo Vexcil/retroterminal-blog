@@ -49,8 +49,9 @@ class HostAccessTests(unittest.TestCase):
                     self.assertEqual((result[0], result[2]), (401, b''))
                 self.assertEqual(request('POST', '/api/songsterr/import', '{}')[0], 401)
                 self.assertEqual(request('POST', '/api/gametabs/import', '{}')[0], 401)
+                self.assertEqual(request('POST','/api/my-tabs','{}')[0],401)
                 self.assertEqual(request('POST', '/api/youtube-sync', '{}')[0], 401)
-                self.assertEqual(json.loads(request('GET', '/api/session')[2]), {'authenticated':False})
+                self.assertEqual(json.loads(request('GET', '/api/session')[2]), {'authenticated':False,'username':None})
                 result = request('POST', '/api/login', json.dumps({'username':'guest', 'password':'test-password'}),
                     {'Content-Type':'application/json', 'Origin':'https://retroterminal.net'})
                 self.assertEqual(result[0], 200)
@@ -76,6 +77,34 @@ class HostAccessTests(unittest.TestCase):
                     again=request('POST','/api/gametabs/import','{"id":"game/title"}',headers)
                     self.assertEqual(again[0],200)
                     self.assertTrue(json.loads(again[2])['alreadyExists'])
+                file=json.loads(first[2])['file']
+                self.assertEqual(request('POST','/api/my-tabs',json.dumps({'file':file,'action':'add'}),dict(headers,Origin='https://untrusted.example'))[0],403)
+                (root/'tabs.json').write_text(json.dumps([{'file':file,'title':'Test','folder':'uploads'}]))
+                # The new shared import belongs only to guest's personal collection.
+                mine=json.loads(request('GET','/api/tabs',headers=headers)[2])
+                self.assertEqual(len(mine['items']),1)
+                second=request('POST','/api/login',json.dumps({'username':'vex','password':'vex-password'}),{'Content-Type':'application/json'})
+                other={'Cookie':second[1]['Set-Cookie'].split(';')[0]}
+                self.assertEqual(json.loads(request('GET','/api/tabs',headers=other)[2])['items'],[])
+                shared=json.loads(request('GET','/api/tabs?scope=all',headers=other)[2])
+                self.assertEqual(len(shared['items']),1)
+                self.assertFalse(shared['items'][0]['in_my_tabs'])
+                # Client-supplied username cannot target the other account.
+                self.assertEqual(request('POST','/api/my-tabs',json.dumps({'file':file,'action':'add','username':'guest'}),other)[0],200)
+                self.assertEqual(request('POST','/api/my-tabs',json.dumps({'file':file,'action':'favorite','favorite':True}),other)[0],200)
+                favorite=json.loads(request('GET','/api/tabs',headers=other)[2])
+                self.assertEqual(len(favorite['favorites']),1)
+                self.assertEqual(favorite['items'],[])
+                self.assertEqual(json.loads(request('GET','/api/tabs',headers=headers)[2])['favorites'],[])
+                self.assertEqual(request('POST','/api/my-tabs',json.dumps({'file':file,'action':'remove'}),other)[0],200)
+                self.assertTrue((root/file.removeprefix('/files/')).is_file())
+                self.assertEqual(len(json.loads(request('GET','/api/tabs',headers=headers)[2])['items']),1)
+                settings['home_ips']=['127.0.0.1'];config.write_text(json.dumps(settings))
+                self.assertEqual(json.loads(request('GET','/api/session')[2]),{'authenticated':True,'username':None})
+                self.assertEqual(request('GET','/api/tabs')[0],401)
+                self.assertEqual(request('POST','/api/my-tabs',json.dumps({'file':file,'action':'add'}))[0],401)
+                self.assertEqual(request('GET','/api/tabs?scope=all')[0],200)
+
                 with patch('tabs_host_server.gametabs_import', return_value={'filename':'bad.gp5','data':b'<html>not guitar pro</html>'}):
                     self.assertEqual(request('POST','/api/gametabs/import','{"id":"game/bad"}',headers)[0],400)
 

@@ -41,10 +41,11 @@ class CatalogTests(unittest.TestCase):
     def test_http_library_filter_is_applied_before_pagination(self):
         handler = object.__new__(TabsHostHandler)
         entries = [{'title': 'Metallica - Creeping Death'}, {'title': 'Death - Symbolic'}, {'title': 'Death - Crystal Mountain'}]
+        entries = [dict(item,file='/files/test-'+str(i)+'.gp5') for i,item in enumerate(entries)]
         handler.get_enriched_entries = lambda: entries
         handler.get_folder_options = lambda: []
         handler.send_json_body = lambda status, payload, **kwargs: payload
-        result = handler.serve_tabs_page('search=Death&search_field=artist&artist_exact=1&page_size=1&page=2')
+        result = handler.serve_tabs_page('scope=all&search=Death&search_field=artist&artist_exact=1&page_size=1&page=2')
         self.assertEqual(result['total'], 2)
         self.assertEqual(result['page'], 2)
         self.assertEqual(result['items'][0]['title'], 'Death - Symbolic')

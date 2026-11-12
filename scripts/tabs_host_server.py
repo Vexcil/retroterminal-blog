@@ -3,9 +3,10 @@ import argparse
 from urllib.error import HTTPError, URLError
 from songsterr_bridge import songsterr_response
 from gametabs_bridge import search as gametabs_search, import_tab as gametabs_import, GameTabsLoginRequired
-from tabs_access import authorized, login, serve_private_viewer, config as access_config
+from tabs_access import authorized, principal, login, serve_private_viewer, config as access_config
 from youtube_sync_store import get_sync, save_sync
 from songsterr_import_store import find_import, remember_import
+from tabs_my_tabs import list_members, add_member, remove_member, set_favorite
 from gametabs_import_store import find_import as find_gametabs_import, remember_import as remember_gametabs_import
 from tab_catalog import identity as catalog_identity, matches as catalog_matches
 import cgi
@@ -118,7 +119,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == '/api/session':
-            return self.send_json(HTTPStatus.OK, {'authenticated': authorized(self)})
+            return self.send_json(HTTPStatus.OK, {'authenticated': authorized(self), 'username': principal(self)})
         if parsed.path != '/healthz' and not authorized(self):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
         if parsed.path == '/api/youtube-sync':
@@ -176,6 +177,10 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             return self.send_json(HTTPStatus.FORBIDDEN, {'error': 'Origin is not allowed.'})
         if not authorized(self):
             return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Please sign in.'})
+        if urlparse(self.path).path == '/api/my-tabs':
+            return self.update_my_tabs()
+        if urlparse(self.path).path in ('/upload','/api/gametabs/import','/api/songsterr/import') and principal(self) is None:
+            return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Sign into an account to add tabs to My Tabs.'})
         if urlparse(self.path).path == '/api/youtube-sync':
             return save_sync(self)
         if urlparse(self.path).path == '/api/gametabs/import':
@@ -209,6 +214,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
             with self.upload_lock:
                 destination.write_bytes(file_data)
+                add_member(self.data_dir, principal(self), destination.relative_to(self.files_dir).as_posix())
                 self.rebuild_index()
 
             return self.send_json(
@@ -320,14 +326,30 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             sort = DEFAULT_SORT
         folder = (params.get("folder", [""])[0] or "").strip()
 
-        entries = self.get_enriched_entries()
+        scope = params.get('scope', ['mine'])[0]
+        if scope not in ('mine', 'all'):
+            return self.send_json_body(HTTPStatus.BAD_REQUEST, {'error': 'Invalid library scope.'}, head_only=head_only)
+        username = principal(self)
+        if scope == 'mine' and username is None:
+            return self.send_json_body(HTTPStatus.UNAUTHORIZED, {'error': 'Sign into an account for My Tabs.'}, head_only=head_only)
+        members = list_members(self.data_dir, username) if username else {}
+        entries = []
+        for item in self.get_enriched_entries():
+            key = unquote(urlparse(item['file']).path).removeprefix('/files/')
+            membership = members.get(key)
+            if scope == 'mine' and membership is None:
+                continue
+            entries.append(dict(item, in_my_tabs=membership is not None, favorite=bool(membership and membership['favorite'])))
         if search:
             entries = [item for item in entries if catalog_matches(item, search, search_field, artist_exact)]
         if folder:
             entries = [item for item in entries if item.get("folder") == folder]
 
         entries = self.sort_entries(entries, sort)
-        folders = self.get_folder_options()
+        folders = sorted({item.get('folder', 'Root') for item in entries})
+        favorites = [item for item in entries if item['favorite']] if scope == 'mine' else []
+        if scope == 'mine':
+            entries = [item for item in entries if not item['favorite']]
 
         total = len(entries)
         max_page = max(1, (total + page_size - 1) // page_size)
@@ -340,6 +362,8 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             HTTPStatus.OK,
             {
                 "items": items,
+                "favorites": favorites,
+                "scope": scope,
                 "page": page,
                 "page_size": page_size,
                 "total": total,
@@ -471,6 +495,37 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
 
         return file_item.filename, file_data
 
+    def update_my_tabs(self):
+        username = principal(self)
+        if username is None:
+            return self.send_json(HTTPStatus.UNAUTHORIZED, {'error': 'Sign into an account for My Tabs.'})
+        try:
+            length = int(self.headers.get('Content-Length', '0'))
+            if not 0 < length <= 4096:
+                raise ValueError('Invalid My Tabs request.')
+            data = json.loads(self.rfile.read(length))
+            if not isinstance(data, dict):
+                raise ValueError('Invalid My Tabs request.')
+            value = data.get('file')
+            if not isinstance(value, str) or not value.startswith('/files/'):
+                raise ValueError('Choose a shared library tab.')
+            path = self.safe_join(self.files_dir, unquote(value[7:]))
+            if not path.is_file() or path.suffix.lower() not in VALID_EXT:
+                raise ValueError('Unknown tab.')
+            key = path.relative_to(self.files_dir).as_posix()
+            action = data.get('action')
+            if action == 'add':
+                add_member(self.data_dir, username, key)
+            elif action == 'remove':
+                remove_member(self.data_dir, username, key)
+            elif action == 'favorite' and type(data.get('favorite')) is bool:
+                set_favorite(self.data_dir, username, key, data['favorite'])
+            else:
+                raise ValueError('Invalid My Tabs action.')
+            return self.send_json(HTTPStatus.OK, {'ok': True})
+        except (ValueError, TypeError, KeyError, PermissionError, OSError):
+            return self.send_json(HTTPStatus.BAD_REQUEST, {'error': 'Unable to update My Tabs. Check the tab and action.'})
+
     def import_gametabs(self):
         # Session is held only on this host, outside public source and data.
         try:
@@ -486,6 +541,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             with self.upload_lock:
                 existing = find_gametabs_import(self, source_id)
                 if existing:
+                    add_member(self.data_dir, principal(self), existing.relative_to(self.files_dir).as_posix())
                     return self.send_json(HTTPStatus.OK, {'title': existing.stem, 'file': self.make_public_file_url(existing), 'alreadyExists': True})
                 artifact = gametabs_import(source_id)
                 name = self.sanitize_filename(artifact['filename'])
@@ -499,6 +555,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 with destination.open('xb') as output:
                     output.write(data)
                 remember_gametabs_import(self, source_id, destination)
+                add_member(self.data_dir, principal(self), destination.relative_to(self.files_dir).as_posix())
                 self.rebuild_index()
             return self.send_json(HTTPStatus.CREATED, {'title': destination.stem, 'file': self.make_public_file_url(destination)})
         except GameTabsLoginRequired as error:
@@ -521,6 +578,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 # Check before fetching/converting, under the same lock as file creation.
                 existing = find_import(self, int(song_id))
                 if existing:
+                    add_member(self.data_dir, principal(self), existing.relative_to(self.files_dir).as_posix())
                     return self.send_json(HTTPStatus.OK, {'title': existing.stem, 'file': self.make_public_file_url(existing), 'songsterr_id': int(song_id), 'alreadyExists': True})
                 from songsterr_vendor.gen_gp import fetch_all_tracks, generate_gp
                 meta, tracks = fetch_all_tracks(int(song_id))
@@ -536,6 +594,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
                 destination = self.make_unique_destination(destination_dir, name)
                 destination.write_bytes(data)
                 remember_import(self, int(song_id), destination)
+                add_member(self.data_dir, principal(self), destination.relative_to(self.files_dir).as_posix())
                 self.rebuild_index()
             return self.send_json(HTTPStatus.CREATED, {'title': destination.stem, 'file': self.make_public_file_url(destination), 'songsterr_id': int(song_id)})
         except (ValueError, TypeError, json.JSONDecodeError) as error:

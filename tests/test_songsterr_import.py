@@ -15,6 +15,8 @@ from youtube_sync_store import connect
 
 class ImportTests(unittest.TestCase):
     def setUp(self):
+        self.principal_patch=patch('tabs_host_server.principal',return_value='test-user')
+        self.principal_patch.start()
         self.tmp=tempfile.TemporaryDirectory()
         self.root=Path(self.tmp.name)
         self.files=self.root/'tabs'; self.files.mkdir()
@@ -23,6 +25,7 @@ class ImportTests(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+        self.principal_patch.stop()
 
     def request(self, song_id):
         handler=object.__new__(TabsHostHandler)

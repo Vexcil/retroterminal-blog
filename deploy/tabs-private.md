@@ -75,3 +75,14 @@ rankings or claim access to more results than the provider returns. Blank search
 returns to Top Tabs. Game/song titles link to their exact GameTabs arrangement;
 **Load** imports or reopens the file in Tabs. Titles occupy a full card row and
 actions sit below, avoiding narrow half-screen character-by-character wrapping.
+
+### My Tabs and Favorites
+The main library and all its files remain shared among authorized Tabs users.
+My Tabs is a private per-account collection, not private file storage. Existing
+collections start empty; legacy files and source associations are not reassigned.
+A signed account cookie is required to identify personal membership; a trusted
+network alone never selects an account. New uploads and both import sources add
+the shared tab to the importing account's collection, including reused imports.
+Removing a tab from My Tabs removes only that membership, never the shared file.
+Favorites are personal membership flags displayed separately above My Tabs.
+Memberships use `/data/my-tabs.sqlite3`, preserved by the existing data volume.

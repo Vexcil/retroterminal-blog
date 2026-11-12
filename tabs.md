@@ -7,12 +7,32 @@ lightweight: true
 tabs_player: true
 ---
 
+<style>
+.tabs-collection-tabs { display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:.75rem; }
+.tabs-collection-tabs [aria-pressed="true"] { border-width:2px; }
+.tabs-favorites { margin-bottom:1rem; border:1px solid var(--border); padding:.65rem; }
+.tabs-favorites h2 { font-size:1rem; margin:0 0 .5rem; }
+#tab-favorites-list { max-height:28vh; overflow:auto; overscroll-behavior:contain; }
+.tab-library-actions { display:flex; flex-wrap:wrap; gap:.4rem; align-items:center; }
+#tab-list .tab-list-item,#tab-favorites-list .tab-list-item { display:grid; grid-template-columns:minmax(0,1fr); gap:.45rem; }
+#tab-list .tab-title,#tab-favorites-list .tab-title { min-width:0; width:100%; overflow-wrap:break-word; word-break:normal; }
+#tab-collection-status { min-height:1.6em; }
+</style>
 <div class="tabs-page">
   <div class="tabs-library-heading">
     <p>Find a song, open a tab, and play.</p>
     <button id="tabs-return" type="button" hidden>Back to tab</button>
   </div>
   <section id="tabs-library" aria-label="Tab library">
+  <div class="tabs-collection-tabs" role="group" aria-label="Tab collection">
+    <button id="tabs-scope-mine" type="button" aria-pressed="true">My Tabs</button>
+    <button id="tabs-scope-all" type="button" aria-pressed="false">All Tabs</button>
+  </div>
+  <p id="tab-collection-status" role="status" aria-live="polite"></p>
+  <section id="tab-favorites" class="tabs-favorites" aria-labelledby="tab-favorites-heading">
+    <h2 id="tab-favorites-heading">Favorites</h2>
+    <div id="tab-favorites-list" tabindex="0" aria-label="Favorite tabs"></div>
+  </section>
   <div class="tabs-controls">
     <div class="tabs-library-search">
       <select id="tab-search-field" aria-label="Library search mode"><option value="all">All</option><option value="artist">Artist</option></select>
@@ -266,6 +286,8 @@ tabs_player: true
   let fileBaseUrl = {{ site.tabs_file_base_url | default: "" | jsonify }};
   let uploadUrl = {{ site.tabs_upload_url | default: "https://tabs.retroterminal.net/upload" | jsonify }};
 
+  let libraryScope = "mine";
+  let favoriteTabs = [];
   let allTabs = [];
   let filteredTabs = [];
   let currentPage = 1;
@@ -279,6 +301,11 @@ tabs_player: true
   const sortSelect         = document.getElementById('tab-sort');
   const folderSelect       = document.getElementById('tab-folder');
   const listEl             = document.getElementById('tab-list');
+  const favoritesSection   = document.getElementById('tab-favorites');
+  const favoritesList      = document.getElementById('tab-favorites-list');
+  const collectionStatus   = document.getElementById('tab-collection-status');
+  const mineScopeBtn       = document.getElementById('tabs-scope-mine');
+  const allScopeBtn        = document.getElementById('tabs-scope-all');
   const pageInfoEl         = document.getElementById('tab-page-info');
   const prevBtn            = document.getElementById('tab-prev');
   const nextBtn            = document.getElementById('tab-next');
@@ -348,7 +375,7 @@ tabs_player: true
 
   const youtubeSync = RetroTabSync.create({getApi: () => alphaApi, getScore: () => currentScore,
     getItem: () => currentTabItem, getApiBase: () => fileBaseUrl || location.origin,
-    importTab: item => loadTab(normalizeTabItem(item)), openTab: item => loadTab(normalizeTabItem(item))});
+    importTab: async item => { if (useRemoteApi) await fetchRemotePage(currentPage); return loadTab(normalizeTabItem(item)); }, openTab: item => loadTab(normalizeTabItem(item))});
 
   function updateScoreScrollRoom() {
     // Leave enough room after the final system for it to reach the top too.
@@ -433,7 +460,9 @@ tabs_player: true
       folder: item && item.folder ? item.folder : "Root",
       folder_path: item && item.folder_path ? item.folder_path : "",
       modified_at: item && item.modified_at ? item.modified_at : 0,
-      play_count: item && item.play_count ? item.play_count : 0
+      play_count: item && item.play_count ? item.play_count : 0,
+      in_my_tabs: !!(item && item.in_my_tabs),
+      favorite: !!(item && item.favorite)
     };
   }
 
@@ -453,6 +482,7 @@ tabs_player: true
 
   function buildApiUrl(page) {
     const url = new URL(primaryApiUrl, window.location.origin);
+    url.searchParams.set("scope", libraryScope);
     url.searchParams.set("page", String(page));
     url.searchParams.set("page_size", String(PAGE_SIZE));
     url.searchParams.set("sort", sortSelect.value || "title-asc");
@@ -537,8 +567,13 @@ tabs_player: true
         await fetchRemotePage(1);
         return;
       } catch (err) {
+        if (libraryScope === 'mine') {
+          favoriteTabs = []; renderFavorites();
+          listEl.textContent = 'Unable to load My Tabs. Please reload to retry.';
+          return;
+        }
         useRemoteApi = false;
-        console.warn("Remote tabs API unavailable, falling back to static index.", err);
+        console.warn("Remote tabs API unavailable, falling back to shared static index.", err);
       }
     }
 
@@ -596,6 +631,7 @@ tabs_player: true
       const payload = await response.json();
       if (controller !== indexRequestController) return;
       filteredTabs = (payload.items || []).map(normalizeTabItem);
+      favoriteTabs = (payload.favorites || []).map(normalizeTabItem);
       totalTabs = typeof payload.total === "number" ? payload.total : filteredTabs.length;
       currentPage = typeof payload.page === "number" ? payload.page : page;
       syncFolderOptions(payload.folders || []);
@@ -703,11 +739,66 @@ tabs_player: true
     renderPage();
   }
 
+  async function changeMembership(item, action, favorite, button) {
+    button.disabled = true;
+    collectionStatus.textContent = '';
+    try {
+      const response = await fetch((fileBaseUrl || location.origin) + '/api/my-tabs', {
+        method:'POST', credentials:'include', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({file:new URL(item.file, location.origin).pathname, action, ...(action === 'favorite' ? {favorite} : {})})
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || 'Unable to update My Tabs. Please try again.');
+      collectionStatus.textContent = action === 'remove' ? 'Removed from My Tabs. The shared file is unchanged.' : action === 'add' ? 'Added to My Tabs.' : favorite ? 'Added to Favorites.' : 'Removed from Favorites.';
+      useRemoteApi = true;
+      await fetchRemotePage(currentPage);
+    } catch (error) {
+      collectionStatus.textContent = error.message;
+    } finally { button.disabled = false; }
+  }
+
+  function createLibraryCard(item) {
+    const li = document.createElement('li'); li.className = 'tab-list-item';
+    const title = document.createElement('span'); title.className = 'tab-title';
+    if (item.artist) title.append(youtubeSync.artistButton(item.artist), document.createTextNode(' — ' + item.song_title));
+    else title.textContent = item.title;
+    title.title = item.folder_path || item.folder || item.title;
+    const actions = document.createElement('div'); actions.className = 'tab-library-actions';
+    const view = document.createElement('button'); view.type = 'button'; view.textContent = 'View';
+    view.setAttribute('aria-label', 'Open ' + item.title); view.onclick = () => loadTab(item);
+    actions.append(view);
+    const member = document.createElement('button'); member.type = 'button';
+    member.textContent = item.in_my_tabs ? 'Remove from My Tabs' : 'Add to My Tabs';
+    member.setAttribute('aria-label', member.textContent + ': ' + item.title);
+    member.onclick = () => changeMembership(item, item.in_my_tabs ? 'remove' : 'add', false, member);
+    actions.append(member);
+    if (item.in_my_tabs) {
+      const favorite = document.createElement('button'); favorite.type = 'button';
+      favorite.textContent = item.favorite ? 'Unfavorite' : 'Favorite';
+      favorite.setAttribute('aria-pressed', String(item.favorite));
+      favorite.setAttribute('aria-label', favorite.textContent + ': ' + item.title);
+      favorite.onclick = () => changeMembership(item, 'favorite', !item.favorite, favorite);
+      actions.append(favorite);
+    }
+    li.append(title, actions); return li;
+  }
+
+  function renderFavorites() {
+    favoritesSection.hidden = libraryScope !== 'mine';
+    favoritesList.replaceChildren();
+    if (libraryScope !== 'mine') return;
+    if (!favoriteTabs.length) { favoritesList.textContent = 'Favorite songs in My Tabs to keep them here.'; return; }
+    const list = document.createElement('ul'); list.className = 'tab-list-ul';
+    favoriteTabs.forEach(item => list.appendChild(createLibraryCard(item)));
+    favoritesList.appendChild(list);
+  }
+
   function renderPage() {
     listEl.innerHTML = "";
+    renderFavorites();
 
     if (filteredTabs.length === 0) {
-      listEl.textContent = "No tabs found.";
+      listEl.textContent = libraryScope === 'mine' ? (favoriteTabs.length ? 'Your favorites are above. No other tabs in this view.' : 'No tabs in this view. Use All Tabs to add songs to My Tabs.') : 'No tabs found.';
       pageInfoEl.textContent = "";
       prevBtn.disabled = true;
       nextBtn.disabled = true;
@@ -722,27 +813,7 @@ tabs_player: true
     const ul = document.createElement("ul");
     ul.className = "tab-list-ul";
 
-    slice.forEach(item => {
-      const li = document.createElement("li");
-      li.className = "tab-list-item";
-
-      const titleSpan = document.createElement("span");
-      titleSpan.className = "tab-title";
-      if (item.artist) titleSpan.append(youtubeSync.artistButton(item.artist), document.createTextNode(' — ' + item.song_title));
-      else titleSpan.textContent = item.title;
-      titleSpan.title = item.folder_path || item.folder || item.title;
-
-      const btn = document.createElement("button");
-      btn.textContent = "View";
-      btn.setAttribute("aria-label", "Open " + item.title);
-      btn.addEventListener("click", function() {
-        loadTab(item);
-      });
-
-      li.appendChild(titleSpan);
-      li.appendChild(btn);
-      ul.appendChild(li);
-    });
+    slice.forEach(item => ul.appendChild(createLibraryCard(item)));
 
     listEl.appendChild(ul);
     listEl.scrollTop = 0;
@@ -1535,6 +1606,20 @@ tabs_player: true
       }
     });
   }
+
+  async function selectLibraryScope(scope) {
+    if (indexRequestController) indexRequestController.abort();
+    clearTimeout(searchDebounce);
+    libraryScope = scope; currentPage = 1; favoriteTabs = [];
+    mineScopeBtn.setAttribute('aria-pressed', String(scope === 'mine'));
+    allScopeBtn.setAttribute('aria-pressed', String(scope === 'all'));
+    collectionStatus.textContent = '';
+    renderFavorites();
+    useRemoteApi = true;
+    await fetchRemotePage(1).catch(error => { listEl.textContent = 'Unable to load this collection. Please try again.'; });
+  }
+  mineScopeBtn.addEventListener('click', () => selectLibraryScope('mine'));
+  allScopeBtn.addEventListener('click', () => selectLibraryScope('all'));
 
   // Search / sort / paginate wiring
   searchInput.addEventListener("input", function() {
