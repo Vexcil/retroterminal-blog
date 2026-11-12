@@ -65,3 +65,13 @@ untrusted users without reconsidering the shared upstream account scope.
 GameTabs files use the site's authenticated download preparation flow and its
 countdown. Imported files pass the existing Guitar Pro validation and source-ID
 deduplication before entering the archive. No cloud session cookies are exported.
+
+### Top Tabs browsing and compact cards
+Selecting GameTabs now loads its genuine Top Tabs ordering automatically. The
+provider currently returns 50 Top Tabs and up to 30 keyword results without
+upstream pagination; Tabs presents those available lists in 20-item local pages,
+with a bounded five-minute cache to keep page order stable. It does not invent
+rankings or claim access to more results than the provider returns. Blank search
+returns to Top Tabs. Game/song titles link to their exact GameTabs arrangement;
+**Load** imports or reopens the file in Tabs. Titles occupy a full card row and
+actions sit below, avoiding narrow half-screen character-by-character wrapping.

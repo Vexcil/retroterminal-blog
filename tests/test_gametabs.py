@@ -11,6 +11,8 @@ SEARCH = '''<a href="https://gametabs.net/tabs/outside/ignore" title="Ignore"></
 <a href="//evil.test/tabs/a/b" title="Bad"></a>
 <a href="/tabs/a/../secret" title="Bad"></a></div></div>'''
 class GameTabsTests(unittest.TestCase):
+    def setUp(self):
+        g._SEARCH_CACHE.clear()
     def test_public_search(self):
         with patch.object(g, 'fetch', return_value=SEARCH) as fetch:
             result = g.search({'q': ['chrono trigger']})
@@ -37,7 +39,7 @@ class GameTabsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             g.parse_search('<html>login or error</html>')
     def test_query_limits(self):
-        for query in [{'q': ['x']}, {'q': ['x' * 121]}, {'q': ['chrono'], 'page': ['2']}]:
+        for query in [{'q': ['x']}, {'q': ['x' * 121]}, {'q': ['chrono'], 'page': ['0']}]:
             with self.assertRaises(ValueError):
                 g.search(query)
     def test_redirect_blocks_external_origin(self):
@@ -90,3 +92,31 @@ class BadSessionTests(unittest.TestCase):
                     f.write(content)
                 os.chmod(d+'/session.json',0o600)
                 self.assertFalse(g.session_status()['connected'])
+
+class PaginationTests(unittest.TestCase):
+    def setUp(self):
+        g._SEARCH_CACHE.clear()
+    def fixture(self, kind, count):
+        return '<div id="'+kind+'">'+''.join('<a href="/tabs/game/tab-'+str(i)+'" title="Song '+str(i)+' - Game"></a>' for i in range(count))+'</div>'
+    def test_top_order_and_stable_pages(self):
+        with patch.object(g, 'fetch', return_value=self.fixture('top-tabs-page-tabs-list',50)) as fetch:
+            pages = [g.search({'page':[str(i)]}) for i in range(1,5)]
+            fetch.assert_called_once_with('/top-tabs')
+        self.assertEqual([len(p['items']) for p in pages],[20,20,10,0])
+        self.assertEqual([p['has_more'] for p in pages],[True,True,False,False])
+        self.assertEqual(pages[1]['items'][0]['id'],'game/tab-20')
+        self.assertEqual(pages[0]['mode'],'top')
+        self.assertEqual(pages[0]['total_available'],50)
+        self.assertEqual(pages[0]['pagination'],'local')
+    def test_keyword_pages_only_available_results(self):
+        with patch.object(g, 'fetch', return_value=self.fixture('tabs-page-tabs-list',30)) as fetch:
+            a=g.search({'q':['chrono'],'page':['1']})
+            b=g.search({'q':['chrono'],'page':['2']})
+            fetch.assert_called_once_with('/tabs?search=chrono')
+        self.assertEqual(a['mode'],'search')
+        self.assertEqual(len(b['items']),10)
+        self.assertFalse(b['has_more'])
+    def test_fetch_rejects_nonpublic_paths(self):
+        for path in ['/tabs-evil','/top-tabs?external=1','//evil.test','/api/auth/cookie_login/']:
+            with self.assertRaises(ValueError):
+                g.fetch(path)

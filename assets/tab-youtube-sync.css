@@ -88,3 +88,8 @@
 .page-tabs .tabs-controls #tab-search-field { width:85px; flex:none; font-size:.65rem; }
 .page-tabs .tabs-library-search #tab-search { flex:1; width:0; min-width:0; }
 @media(max-width:700px) { .page-tabs .tabs-library-search { grid-column:1 / -1; } }
+
+/* Keep game/title readable instead of squeezing it between two actions. */
+.gametabs-result { display:grid; grid-template-columns:minmax(0,1fr); align-items:start; }
+.gametabs-result .catalog-song { width:100%; overflow-wrap:break-word; word-break:normal; }
+.gametabs-result>button { justify-self:start; white-space:normal; max-width:100%; }

@@ -170,7 +170,8 @@ test('GameTabs source searches separately, explains login requirement and reject
    assert.equal($('songsterr-direct-import').hidden,true);
    assert.equal($('songsterr-results').querySelector('button').disabled,true);
    assert.match($('songsterr-status').textContent,/connected GameTabs account/);
-   assert.equal($('songsterr-results').querySelector('a').href,'https://gametabs.net/chrono-trigger/wind-scene');
+   assert.equal($('songsterr-results').querySelectorAll('a').length,1);
+   assert.equal(new URL(calls[1].url,'https://retroterminal.net').searchParams.get('q'),'');
    late();await pending;
    assert.doesNotMatch($('songsterr-results').textContent,/Stale result/);
    $('songsterr-query').value='';
@@ -178,4 +179,22 @@ test('GameTabs source searches separately, explains login requirement and reject
    assert.equal($('songsterr-results').children.length,0);
    assert.equal($('songsterr-results').getAttribute('aria-busy'),'false');
  } finally {sync.beforeLoad();dom.window.close();}
+});
+
+test('GameTabs opens Top Tabs automatically and pages top and searched results',async()=>{
+ const dom=new JSDOM(fs.readFileSync(path.join(root,'tabs.md'),'utf8'),{url:'https://retroterminal.net/tabs/',runScripts:'outside-only'});
+ const w=dom.window,$=id=>w.document.getElementById(id);w.HTMLElement.prototype.scrollIntoView=function(){};
+ const requests=[];w.fetch=async url=>{requests.push(new URL(url,'https://retroterminal.net'));return {ok:true,json:async()=>({items:[{id:'game/title',artist:'Game',title:'A long readable title',url:'https://gametabs.net/tabs/game/title'}],has_more:true,import_available:true})};};
+ w.eval(fs.readFileSync(path.join(root,'assets/tab-youtube-sync.js'),'utf8'));
+ const sync=w.RetroTabSync.create({getApi:()=>null,getScore:()=>null,getItem:()=>null,getApiBase:()=>''});
+ try {
+  $('songsterr-query').value='Old Songsterr query';await $('gametabs-source').onclick(new w.Event('click'));
+  assert.equal(requests.at(-1).searchParams.get('q'),'');assert.equal(requests.at(-1).searchParams.get('page'),'1');
+  assert.equal($('songsterr-query').required,false);assert.equal($('songsterr-results').querySelector('button').disabled,false);
+  assert.equal($('songsterr-results').querySelectorAll('a').length,1);assert.ok($('songsterr-results').querySelector('.gametabs-result'));
+  await $('songsterr-next').onclick();assert.equal(requests.at(-1).searchParams.get('page'),'2');assert.equal(requests.at(-1).searchParams.get('q'),'');
+  await $('songsterr-prev').onclick();assert.equal(requests.at(-1).searchParams.get('page'),'1');
+  $('songsterr-query').value='Zelda';await $('songsterr-search-form').onsubmit(new w.Event('submit'));
+  await $('songsterr-next').onclick();assert.equal(requests.at(-1).searchParams.get('q'),'Zelda');assert.equal(requests.at(-1).searchParams.get('page'),'2');
+ } finally {sync.beforeLoad();w.close();}
 });

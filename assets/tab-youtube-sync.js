@@ -393,6 +393,8 @@
       $('gametabs-source').setAttribute('aria-pressed',String(game));
       $('library-source').setAttribute('aria-pressed',String(local));
       $('songsterr-direct-import').hidden=local || game;
+      $('songsterr-query').required=!game; $('songsterr-query').minLength=game?0:2;
+      $('songsterr-query').placeholder=game?'Search game / song, or leave blank for Top Tabs':'Search for tabs…';
       $('songsterr-artist-filter').hidden=!catalogArtist || game;
       $('songsterr-artist-name').textContent=catalogArtist?.name || '';
       songsterrResults.setAttribute('aria-label',local?'My library results':game?'GameTabs results':'Songsterr results');
@@ -417,7 +419,7 @@
       return bindArtist(button,artist,artistId);
     }
     async function searchCatalog(page=1, query=$('songsterr-query').value.trim()) {
-      if(query.length<2) throw new Error('Enter a song title or artist.');
+      if(query.length<2 && !(catalogSource==='gametabs' && query==='')) throw new Error('Enter a song title or artist.');
       if(catalogArtist && query!==catalogArtist.name) catalogArtist=null;
       catalogPage=page; catalogQuery=query; updateCatalog();
       const source=catalogSource, local=source==='library', game=source==='gametabs', artist=game?null:catalogArtist;
@@ -432,23 +434,24 @@
         if(controller.signal.aborted) return;
         if(!local && artist && data.artist_id) catalogArtist.id=data.artist_id;
         data.items.forEach(song => {
-          const row=document.createElement('div'), title=document.createElement('div'), name=document.createElement('span'), button=document.createElement('button');
+          const row=document.createElement('div'), title=document.createElement(game?'a':'div'), name=document.createElement('span'), button=document.createElement('button');
           const labels=local?RetroTabDiscovery.catalogIdentity(song):{artist:song.artist,song_title:song.title};
           row.className='songsterr-result'; title.className='catalog-song';
+          if(game && song.url) { title.href=song.url;title.target='_blank';title.rel='noopener noreferrer'; }
           if(labels.artist) { if(game) { const label=document.createElement('span');label.textContent=labels.artist+' · ';title.append(label); } else title.append(artistButton(labels.artist,song.artist_id)); }
           name.textContent=labels.song_title; title.append(name);
-          button.type='button'; button.textContent=local?'Open tab':game && !data.import_available?'Sign-in needed':'Import / open';
+          button.type='button'; button.textContent=local?'Open tab':game && !data.import_available?'Sign-in needed':'Load';
           if(game && !data.import_available) { button.disabled=true;button.title='Connect a GameTabs account on the tab server to enable direct imports.'; }
           button.setAttribute('aria-label',(local?'Open ':'Import or open ')+(labels.artist?labels.artist+' — ':'')+labels.song_title);
           button.onclick=catalogRun(()=>local?context.openTab(song):importSong(String(song.id),button,catalogMessage,source));
           row.append(title,button);
-          if(game && song.url) { const link=document.createElement('a');link.href=song.url;link.target='_blank';link.rel='noopener noreferrer';link.textContent='GameTabs page';row.append(link); }
+          if(game) row.classList.add('gametabs-result');
           songsterrResults.append(row);
         });
         $('songsterr-pagination').hidden=!data.items.length;
         $('songsterr-prev').disabled=page<=1; $('songsterr-next').disabled=!data.has_more;
         $('songsterr-page').textContent='Page '+page;
-        catalogMessage(game && data.items.length && !data.import_available ? 'GameTabs results found. Direct import needs a connected GameTabs account; use GameTabs page to view an arrangement.' : data.items.length ? (local?data.total+' tabs in your library. Choose one to open.':'Choose an arrangement to open. Tabs already in your library are reused.') : 'No tabs found'+(local?' in your library. Try Songsterr or another artist.':game?'. Try another game or song title.':'. Try another search or paste a Songsterr link below.'));
+        catalogMessage(game && data.items.length && !data.import_available ? 'Direct import needs a connected GameTabs account.' : data.items.length ? (local?data.total+' tabs in your library. Choose one to open.':game && !query?'GameTabs Top Tabs, in the site’s ranking order. Choose an arrangement to import.':'Choose an arrangement to open. Tabs already in your library are reused.') : 'No tabs found'+(local?' in your library. Try Songsterr or another artist.':game?'. Try another game or song title.':'. Try another search or paste a Songsterr link below.'));
       } catch(error) {
         if(catalogController===controller) throw error.name==='AbortError' ? new Error('Search timed out. Try again.') : error;
       } finally { if(catalogController===controller) songsterrResults.setAttribute('aria-busy','false'); }
@@ -457,8 +460,9 @@
     $('songsterr-query').oninput=()=>{if(catalogArtist && $('songsterr-query').value.trim()!==catalogArtist.name) {catalogArtist=null;updateCatalog();}};
     for(const source of ['songsterr','gametabs','library']) $(source+'-source').onclick=catalogRun(async()=>{
       catalogController?.abort(); catalogController=null; songsterrResults.setAttribute('aria-busy','false');
-      catalogSource=source; if(source==='gametabs') catalogArtist=null; updateCatalog();
-      if($('songsterr-query').value.trim().length>=2) await searchCatalog(1);
+      catalogSource=source; if(source==='gametabs') { catalogArtist=null; $('songsterr-query').value=''; } updateCatalog();
+      if(source==='gametabs') await searchCatalog(1,'');
+      else if($('songsterr-query').value.trim().length>=2) await searchCatalog(1);
       else { songsterrResults.replaceChildren(); $('songsterr-pagination').hidden=true; }
     });
     $('songsterr-artist-clear').onclick=catalogRun(()=>{catalogArtist=null;updateCatalog();return searchCatalog(1);});

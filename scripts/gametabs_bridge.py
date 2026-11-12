@@ -15,7 +15,7 @@ class _SameOriginRedirect(HTTPRedirectHandler):
             raise ValueError('GameTabs redirected outside its expected origin.')
         return super().redirect_request(req, fp, code, msg, headers, newurl)
 def fetch(path):
-    if not path.startswith('/tabs') or path.startswith('//'):
+    if not re.fullmatch(r'/(?:tabs(?:\?[^#]*)?|top-tabs)', path):
         raise ValueError('Invalid GameTabs path.')
     req = Request(ORIGIN + path, headers={'User-Agent': 'RetroTerminal-Tabs/1.0', 'Accept': 'text/html'})
     with build_opener(_SameOriginRedirect()).open(req, timeout=12) as response:
@@ -43,7 +43,7 @@ class _SearchParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
         if tag == 'div':
-            if attrs.get('id') == 'tabs-page-tabs-list':
+            if attrs.get('id') in ('tabs-page-tabs-list', 'top-tabs-page-tabs-list'):
                 self.scope = 1
                 self.saw_list = True
             elif self.scope:
@@ -67,16 +67,39 @@ def parse_search(html):
     if not parser.saw_list:
         raise ValueError('GameTabs returned an unexpected search page.')
     return list({item['id']: item for item in parser.items}.values())[:100]
+# The provider currently exposes unpaginated lists (50 Top Tabs / 30 search
+# results observed). Slice only these genuine ordered results; never invent a
+# ranking or imply this is a complete count of all matching catalog entries.
+_SEARCH_CACHE = {}
+PAGE_SIZE = 20
+
 def search(query):
     term = query.get('q', [''])[0].strip()
-    if not 2 <= len(term) <= 120:
+    if term and not 2 <= len(term) <= 120:
         raise ValueError('Enter between 2 and 120 search characters.')
     page = str(query.get('page', ['1'])[0])
-    if page != '1':
-        raise ValueError('GameTabs search currently supports its first results page only.')
+    if not page.isdecimal() or not 1 <= int(page) <= 50:
+        raise ValueError('Invalid GameTabs results page.')
+    page = int(page)
+    path = '/tabs?' + urlencode({'search': term}) if term else '/top-tabs'
+    now = time.monotonic()
+    with _LOCK:
+        cached = _SEARCH_CACHE.get(path)
+        if cached and now - cached[0] < 300:
+            items = cached[1]
+        else:
+            items = parse_search(fetch(path))
+            if len(_SEARCH_CACHE) >= 32:
+                _SEARCH_CACHE.pop(next(iter(_SEARCH_CACHE)))
+            _SEARCH_CACHE[path] = (now, items)
+    offset = (page - 1) * PAGE_SIZE
     status = session_status()
-    return {'items': parse_search(fetch('/tabs?' + urlencode({'search': term}))),
-            'page': 1, 'has_more': False, 'import_available': status['connected'], 'login_required': not status['connected']}
+    return {'items': items[offset:offset + PAGE_SIZE],
+            'page': page, 'has_more': offset + PAGE_SIZE < len(items),
+            'mode': 'search' if term else 'top', 'pagination': 'local',
+            'total_available': len(items), 'page_size': PAGE_SIZE,
+            'source_url': ORIGIN + path,
+            'import_available': status['connected'], 'login_required': not status['connected']}
 class _DetailParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
