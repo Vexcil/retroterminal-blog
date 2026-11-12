@@ -6,6 +6,7 @@ from gametabs_bridge import search as gametabs_search, import_tab as gametabs_im
 from tabs_access import authorized, login, serve_private_viewer, config as access_config
 from youtube_sync_store import get_sync, save_sync
 from songsterr_import_store import find_import, remember_import
+from gametabs_import_store import find_import as find_gametabs_import, remember_import as remember_gametabs_import
 from tab_catalog import identity as catalog_identity, matches as catalog_matches
 import cgi
 import json
@@ -471,8 +472,7 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
         return file_item.filename, file_data
 
     def import_gametabs(self):
-        # Authenticated GameTabs downloading must use its supported login flow.
-        # Until that is configured, the bridge fails closed without writing files.
+        # Session is held only on this host, outside public source and data.
         try:
             length = int(self.headers.get('Content-Length', '0'))
             if not 0 < length <= 1024:
@@ -480,14 +480,33 @@ class TabsHostHandler(SimpleHTTPRequestHandler):
             request = json.loads(self.rfile.read(length))
             if not isinstance(request, dict):
                 raise ValueError('Invalid import request.')
-            gametabs_import(request.get('id', ''))
-            return self.send_json(HTTPStatus.NOT_IMPLEMENTED, {'error': 'GameTabs import is not configured yet.'})
+            source_id = request.get('id', '')
+            if not isinstance(source_id, str) or not re.fullmatch(r'[a-zA-Z0-9_-]{1,200}/[a-zA-Z0-9_-]{1,240}', source_id):
+                raise ValueError('Invalid GameTabs tab ID.')
+            with self.upload_lock:
+                existing = find_gametabs_import(self, source_id)
+                if existing:
+                    return self.send_json(HTTPStatus.OK, {'title': existing.stem, 'file': self.make_public_file_url(existing), 'alreadyExists': True})
+                artifact = gametabs_import(source_id)
+                name = self.sanitize_filename(artifact['filename'])
+                data = artifact['data']
+                if not isinstance(data, bytes) or len(data) > MAX_UPLOAD_BYTES:
+                    raise ValueError('GameTabs file is too large or invalid.')
+                self.validate_upload(name, Path(name).suffix.lower(), data)
+                destination_dir = self.files_dir / UPLOAD_SUBDIR
+                destination_dir.mkdir(parents=True, exist_ok=True)
+                destination = self.make_unique_destination(destination_dir, name)
+                with destination.open('xb') as output:
+                    output.write(data)
+                remember_gametabs_import(self, source_id, destination)
+                self.rebuild_index()
+            return self.send_json(HTTPStatus.CREATED, {'title': destination.stem, 'file': self.make_public_file_url(destination)})
         except GameTabsLoginRequired as error:
             return self.send_json(HTTPStatus.CONFLICT, {'error': str(error), 'code': 'gametabs_login_required'})
         except (ValueError, TypeError) as error:
             return self.send_json(HTTPStatus.BAD_REQUEST, {'error': str(error)})
-        except (HTTPError, URLError, TimeoutError, OSError):
-            return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'GameTabs is unavailable. No tabs were changed.'})
+        except Exception:
+            return self.send_json(HTTPStatus.BAD_GATEWAY, {'error': 'GameTabs import could not finish. Retry safely; existing tabs are preserved.'})
 
     def import_songsterr(self):
         import tempfile

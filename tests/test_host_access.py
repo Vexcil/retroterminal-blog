@@ -9,6 +9,7 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 from functools import partial
 import bcrypt
 from http.server import ThreadingHTTPServer
@@ -66,6 +67,18 @@ class HostAccessTests(unittest.TestCase):
                 self.assertEqual(request('POST','/api/login',json.dumps({'username':'vex','password':'test-password'}))[0],401)
                 self.assertEqual(request('POST','/api/login',json.dumps({'username':'unknown','password':'test-password'}))[0],401)
                 self.assertEqual(request('POST', '/api/play', '{}', dict(headers, Origin='https://untrusted.example'))[0], 403)
+                self.assertEqual(request('POST', '/api/gametabs/import', '{"id":"game/title"}', dict(headers, Origin='https://untrusted.example'))[0], 403)
+                self.assertEqual(request('POST', '/api/gametabs/import', '{"id":"../oops"}', headers)[0], 400)
+                with patch('tabs_host_server.gametabs_import', return_value={'filename':'Test.gp5','data':b'FICHIER GUITAR PRO'+b'\0'*80}), patch.object(TabsHostHandler,'rebuild_index'):
+                    first=request('POST','/api/gametabs/import','{"id":"game/title"}',headers)
+                    self.assertEqual(first[0],201)
+                with patch('tabs_host_server.gametabs_import', side_effect=AssertionError('should reuse')):
+                    again=request('POST','/api/gametabs/import','{"id":"game/title"}',headers)
+                    self.assertEqual(again[0],200)
+                    self.assertTrue(json.loads(again[2])['alreadyExists'])
+                with patch('tabs_host_server.gametabs_import', return_value={'filename':'bad.gp5','data':b'<html>not guitar pro</html>'}):
+                    self.assertEqual(request('POST','/api/gametabs/import','{"id":"game/bad"}',headers)[0],400)
+
             finally:
                 connection.close()
                 server.shutdown()

@@ -34,15 +34,34 @@ server route; it does not expose library data or credentials to GameTabs. Result
 link to the exact public arrangement. Requests are bounded and limited
 to the GameTabs HTTPS host; user-supplied arbitrary URLs are not fetched.
 
-GameTabs requires login to download Guitar Pro files. Until a legitimate account
-session and supported download flow are configured, results explicitly show
-**Sign-in needed**, and `/api/gametabs/import` fails closed without creating files.
-This is search integration only, not a claim that direct imports work. No
-passwords, session cookies or Google tokens belong in the repository or browser
-assets. Finish authenticated download integration using a connected browser and
-verify a real import before enabling the button.
+GameTabs requires login to download Guitar Pro files. Without a connected local
+session, results explicitly show **Sign-in needed** and imports fail closed.
+After local CLI login, the Import button uses the server-side authenticated flow.
+No passwords, cookies or Google tokens belong in repository or browser assets.
+The local import path is regression tested; real server login/import must still
+be checked after the owner connects their account.
 
 Songsterr verification on November 12: public search returned Chrono Trigger
 results; the existing conversion code received HTTP 403 at `/api/meta/63252`.
 No alternate endpoint or identity was used to evade that rejection. Existing
 library playback is unaffected; new Songsterr imports cannot be called verified.
+
+### Durable GameTabs connection
+
+GameTabs importing runs on vex-dao, not in the assistant's cloud browser.
+A dedicated `/gametabs-session` volume holds only the authenticated session
+(owner-only directory and file). It must never be placed under `/data`, `/tabs`,
+or GitHub Pages. The container retains its existing restart policy, archive mounts,
+read-only root filesystem and authentication requirements. Session persistence
+survives service upgrades and boots, but upstream session expiry or revocation
+requires another one-time login. Passwords are prompted invisibly by the local
+CLI and are not retained. No remote connection-management endpoint is exposed.
+
+Connect from vex-dao's terminal:
+`docker exec -it retroterminal-tabs-private python3 scripts/gametabs_bridge.py login`
+
+This connection serves the already-authorized private Tabs users. Never add
+untrusted users without reconsidering the shared upstream account scope.
+GameTabs files use the site's authenticated download preparation flow and its
+countdown. Imported files pass the existing Guitar Pro validation and source-ID
+deduplication before entering the archive. No cloud session cookies are exported.
